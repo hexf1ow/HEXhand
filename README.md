@@ -263,6 +263,7 @@ start — you keep your slug and settings.
 | ChatGPT says the connector failed | Open the MCP URL in a browser — you should get a JSON-RPC error, not a connection failure. If the connector is remote, check it is running there and the token matches. |
 | ChatGPT cannot reach the URL | A local URL is not reachable from outside. Put Caddy in front with a real hostname (see the deployment section), or enable the optional tunnel. |
 | A command runs forever | Ask ChatGPT to use `start_command`, then `poll_command`, then `cancel_command`. |
+| ChatGPT card: "software did not initiate" / instruction timeout | Fixed in 0.11.2: the first tool call runs immediately instead of asking for a second round trip. Update the binary, or call `hexhand_instruction` then retry on older builds. |
 | Windows: "HEXhand here" does nothing | Run `connector/windows/install-launcher.ps1` once in an **admin** PowerShell — it reserves port 3210. A normal user cannot open the listener without that reservation. |
 | Windows: "unverified publisher" | Expected — the binary is not code-signed. *More info → Run anyway*. |
 

@@ -185,30 +185,27 @@ pub(crate) async fn handle_request_with_show_detail_mode(
             .await,
         ),
         "tools/call" => {
-            let tool_name = tool_name_from_request(req);
-            if tool_name != "hexhand_instruction" && !hexhand_instruction_called {
-                Some(hexhand_instruction_required_response_with_show_detail_mode(
+            // The first tool call used to be answered with an "instruction required" payload
+            // instead of running the tool. That bought a whole extra model round trip before
+            // the ChatGPT card could paint, and the card's init deadline expired first — the
+            // "software did not initiate / timed out" message. Run the tool immediately.
+            let _ = (&hexhand_instruction_called, tool_name_from_request(req));
+            Some(
+                handle_tools_call_with_show_detail_mode(
                     req,
+                    workspace_root,
+                    mascot_seed,
+                    mode,
+                    tool_mode,
+                    set_catdesk_as_co_author,
+                    handoff_enabled,
+                    sandbox_enabled,
+                    command_jobs,
+                    devtools,
                     show_detail_mode,
-                ))
-            } else {
-                Some(
-                    handle_tools_call_with_show_detail_mode(
-                        req,
-                        workspace_root,
-                        mascot_seed,
-                        mode,
-                        tool_mode,
-                        set_catdesk_as_co_author,
-                        handoff_enabled,
-                        sandbox_enabled,
-                        command_jobs,
-                        devtools,
-                        show_detail_mode,
-                    )
-                    .await,
                 )
-            }
+                .await,
+            )
         }
         "resources/list" => Some(handle_resources_list_with_show_detail_mode(
             req,
@@ -2141,6 +2138,7 @@ fn tool_error_response(req: &JsonRpcRequest, text: String) -> JsonRpcResponse {
     tool_response(req, text, None, true)
 }
 
+#[allow(dead_code)] // kept so the gate can be restored without rewriting it
 fn hexhand_instruction_required_widget_payload(req: &JsonRpcRequest) -> Value {
     let tool_name = tool_name_from_request(req);
     let mut payload = base_widget_payload("tool_call", &tool_name, "failed", Some(&tool_name));
@@ -2154,6 +2152,7 @@ fn hexhand_instruction_required_widget_payload(req: &JsonRpcRequest) -> Value {
     Value::Object(payload)
 }
 
+#[allow(dead_code)] // kept so the gate can be restored without rewriting it
 fn hexhand_instruction_required_response_with_show_detail_mode(
     req: &JsonRpcRequest,
     show_detail_mode: ShowDetailMode,

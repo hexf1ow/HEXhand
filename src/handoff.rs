@@ -264,7 +264,7 @@ fn render_handoff(
     workspace_id: &str,
 ) -> String {
     let mut out = String::new();
-    out.push_str("# CatDesk Session Handoff\n\n");
+    out.push_str("# HEXhand Session Handoff\n\n");
     out.push_str("<!-- catdesk-handoff:v2 -->\n\n");
     out.push_str(&format!("Generated: `{generated_at}`\n\n"));
     out.push_str(&format!("Workspace: `{workspace_name}`\n\n"));

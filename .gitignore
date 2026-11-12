@@ -2,3 +2,8 @@
 /npm/bin
 log.txt
 log_old.txt
+/out
+*.log
+config.toml
+.env
+connector_token.txt

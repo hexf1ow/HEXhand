@@ -5,7 +5,7 @@ use tree_sitter_bash::LANGUAGE as BASH_LANGUAGE;
 const MAX_BUFFER_BYTES: usize = 1024 * 1024;
 pub const DEFAULT_TIMEOUT_MS: u64 = 30_000;
 pub const MAX_TIMEOUT_MS: u64 = 120_000;
-pub const CATDESK_CO_AUTHOR_TRAILER: &str = "Co-Authored-By: CatDesk";
+pub const CATDESK_CO_AUTHOR_TRAILER: &str = "Co-Authored-By: HEXhand";
 
 #[derive(Debug)]
 pub struct CommandResult {
@@ -171,7 +171,7 @@ pub fn detect_move_path_intercept(command: &str) -> Option<InterceptedMovePathRe
     detect_move_path_intercept_from_words(&words)
 }
 
-/// Execute a short shell command via CatDesk's shared process runner.
+/// Execute a short shell command via HEXhand's shared process runner.
 ///
 /// The process runner owns the complete process tree. If this future is timed
 /// out or dropped because the MCP request disappears, the child tree is
@@ -1012,7 +1012,7 @@ mod tests {
     #[test]
     fn contains_catdesk_co_author_marker_matches_spaced_and_punctuated_phrase() {
         assert!(contains_catdesk_co_author_marker(
-            "git commit -m \"Fix bug\\n\\nCo-Authored-By: CatDesk\""
+            "git commit -m \"Fix bug\\n\\nCo-Authored-By: HEXhand\""
         ));
         assert!(contains_catdesk_co_author_marker(
             "git commit -m \"co***author___by:::catdesk\""
@@ -1028,7 +1028,7 @@ mod tests {
             inject_catdesk_co_author_trailer("git add . && git commit -m \"test\" && git status");
         assert_eq!(
             rewritten,
-            "git add . && git commit --trailer 'Co-Authored-By: CatDesk' -m \"test\" && git status"
+            "git add . && git commit --trailer 'Co-Authored-By: HEXhand' -m \"test\" && git status"
         );
     }
 
@@ -1039,7 +1039,7 @@ mod tests {
         );
         assert_eq!(
             rewritten,
-            "bash -lc 'git add src/widget/catdesk_dashboard.html && git commit --trailer '\"'\"'Co-Authored-By: CatDesk'\"'\"' -m \"Update catdesk widget meta handling\"'"
+            "bash -lc 'git add src/widget/catdesk_dashboard.html && git commit --trailer '\"'\"'Co-Authored-By: HEXhand'\"'\"' -m \"Update catdesk widget meta handling\"'"
         );
     }
 

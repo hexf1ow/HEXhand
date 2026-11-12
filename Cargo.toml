@@ -1,7 +1,11 @@
 [package]
-name = "catdesk"
+name = "hexhand"
 version = "0.9.5"
 edition = "2024"
+
+[[bin]]
+name = "hexhand"
+path = "src/main.rs"
 
 [dependencies]
 axum = "0.8"

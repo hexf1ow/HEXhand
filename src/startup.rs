@@ -26,10 +26,10 @@ const TRACE_LEAD_PIXELS: usize = 9;
 const LARGE_LAYOUT_MIN_WIDTH: u16 = 82;
 const LARGE_LAYOUT_MIN_HEIGHT: u16 = 17;
 
-const CATDESK_WORDMARK: [&str; 3] = [
-    "█▀▀ █▀█ ▀█▀ █▀▄ █▀▀ █▀▀ █▄▀",
-    "█   █▀█  █  █ █ █▀  ▀▀█ █▀▄",
-    "▀▀▀ ▀ ▀  ▀  ▀▀  ▀▀▀ ▀▀▀ ▀ ▀",
+const HEXHAND_WORDMARK: [&str; 3] = [
+    "█ █ █▀▀ █ █ █ █ █▀█ █▄ █ █▀▄",
+    "█▀█ █▀  ▀█▀ █▀█ █▀█ █ ▀█ █ █",
+    "█ █ ▀▀▀ █ █ █ █ ▀ ▀ ▀  ▀ ▀▀ ",
 ];
 
 pub async fn run_startup_intro(
@@ -271,7 +271,7 @@ fn draw_wordmark(
     let visible_columns = ((width as f32 * reveal).ceil() as usize).min(width);
     let lead = visible_columns.saturating_sub(1);
 
-    let mut lines = CATDESK_WORDMARK
+    let mut lines = HEXHAND_WORDMARK
         .iter()
         .map(|row| {
             let spans = row
@@ -316,7 +316,7 @@ fn draw_wordmark(
 }
 
 fn big_wordmark_width() -> u16 {
-    CATDESK_WORDMARK
+    HEXHAND_WORDMARK
         .iter()
         .map(|line| line.chars().count())
         .max()

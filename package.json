@@ -1,5 +1,5 @@
 {
-  "name": "catdesk",
+  "name": "hexhand",
   "version": "0.9.5",
   "description": "Use ChatGPT Chat as a local coding agent.",
   "license": "MIT",
@@ -12,13 +12,13 @@
     "url": "https://github.com/Xeift/CatDesk/issues"
   },
   "bin": {
-    "catdesk": "npm/catdesk.js"
+    "hexhand": "npm/hexhand.js"
   },
   "scripts": {
     "postinstall": "node npm/postinstall.js"
   },
   "files": [
-    "npm/catdesk.js",
+    "npm/hexhand.js",
     "npm/postinstall.js",
     "LICENSE",
     "README.md"

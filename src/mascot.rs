@@ -29,7 +29,7 @@ const SPIRIT_HERO_BG_HEIGHT: u32 = 420;
 pub const TUI_MASCOT_BLOCK_WIDTH: u16 = MASCOT_SPIRIT_FRAME_WIDTH as u16 + 2;
 pub const TUI_MASCOT_BLOCK_HEIGHT: u16 = ((MASCOT_SPIRIT_FRAME_HEIGHT as u16) + 1) / 2 + 2;
 #[cfg_attr(test, allow(dead_code))]
-const CATDESK_DIR_NAME: &str = ".catdesk";
+const CATDESK_DIR_NAME: &str = ".hexhand";
 #[cfg_attr(test, allow(dead_code))]
 const BINAGOTCHY_DIR_NAME: &str = "binagotchy";
 #[cfg_attr(test, allow(dead_code))]

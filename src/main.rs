@@ -11,6 +11,7 @@ mod linux_sandbox;
 mod macos_terminal;
 mod mascot;
 mod mcp;
+mod remote;
 mod ngrok;
 mod process_runner;
 mod server;
@@ -515,8 +516,8 @@ fn localize_log_message(message: &str, ui_language: UiLanguage) -> String {
                 ("Tool mode: ", "工具模式：", true),
                 ("Widget detail mode: ", "Widget 詳細模式：", true),
                 (
-                    "Set CatDesk as co-author: ",
-                    "將 CatDesk 設為共同作者：",
+                    "Set HEXhand as co-author: ",
+                    "將 HEXhand 設為共同作者：",
                     true,
                 ),
                 ("Local browsers: ", "本機瀏覽器：", false),
@@ -721,7 +722,7 @@ fn export_logs_to_dir(
 }
 
 fn export_logs(logs: &[LogEntry]) -> std::io::Result<std::path::PathBuf> {
-    export_logs_to_dir(logs, &user_home_dir()?.join(".catdesk").join("logs"))
+    export_logs_to_dir(logs, &user_home_dir()?.join(".hexhand").join("logs"))
 }
 
 fn mcp_url_reveal_bar_segments(remaining: Duration) -> (String, String) {
@@ -1644,8 +1645,8 @@ fn parse_terminal_profile_choice(input: &str) -> Option<bool> {
 
 fn prompt_macos_terminal_profile() -> std::io::Result<bool> {
     loop {
-        println!("CatDesk can apply its Terminal.app profile for the best TUI appearance.");
-        print!("Use the CatDesk Terminal.app profile? [Y/n]: ");
+        println!("HEXhand can apply its Terminal.app profile for the best TUI appearance.");
+        print!("Use the HEXhand Terminal.app profile? [Y/n]: ");
         std::io::stdout().flush()?;
 
         let mut input = String::new();
@@ -1670,6 +1671,34 @@ fn macos_terminal_profile_enabled() -> std::io::Result<bool> {
     Ok(enabled)
 }
 
+/// Carry a pre-rename install forward: if `~/.hexhand` does not exist yet but the old
+/// `~/.catdesk` folder does, copy it across so the workspace slug and settings survive.
+fn migrate_legacy_config_dir() {
+    let Ok(home) = user_home_dir() else { return };
+    let new_dir = home.join(".hexhand");
+    let old_dir = home.join(".catdesk");
+    if new_dir.exists() || !old_dir.exists() {
+        return;
+    }
+    if copy_dir_recursive(&old_dir, &new_dir).is_ok() {
+        eprintln!("HEXhand: carried your existing settings over from ~/.catdesk");
+    }
+}
+
+fn copy_dir_recursive(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_recursive(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // rustls 0.23 refuses to pick a process-level CryptoProvider when more than
@@ -1681,6 +1710,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
     // An error means a provider was already installed, which is equally fine.
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    migrate_legacy_config_dir();
 
     if std::env::args().any(|arg| arg == "--background-router") {
         return run_background_router().await;
@@ -1692,13 +1722,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(target_os = "macos")]
         Ok(macos_terminal::LaunchAction::ExitAfterProfileBootstrap) => {
             eprintln!(
-                "CatDesk applied the Terminal.app profile. Run the same command again in this tab."
+                "HEXhand applied the Terminal.app profile. Run the same command again in this tab."
             );
             return Ok(());
         }
         Err(error) => {
             return Err(std::io::Error::other(format!(
-                "CatDesk: macOS Terminal profile bootstrap failed: {error}"
+                "HEXhand: macOS Terminal profile bootstrap failed: {error}"
             ))
             .into());
         }
@@ -1915,7 +1945,7 @@ async fn prepare_shared_workspace_router(state: SharedState) -> std::io::Result<
         app.log(
             "INFO",
             format!(
-                "Shared CatDesk router is ready; registered this process as a workspace worker on port {port}"
+                "Shared HEXhand router is ready; registered this process as a workspace worker on port {port}"
             ),
         );
     }
@@ -1943,14 +1973,14 @@ async fn ensure_background_router(mcp_slug: &str) -> std::io::Result<()> {
         }
         if let Some(status) = child.try_wait()? {
             return Err(std::io::Error::other(format!(
-                "CatDesk background router exited during startup ({status}); check ngrok credentials and domain"
+                "HEXhand background router exited during startup ({status}); check ngrok credentials and domain"
             )));
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     Err(std::io::Error::new(
         std::io::ErrorKind::TimedOut,
-        "timed out waiting for the CatDesk background router to start",
+        "timed out waiting for the HEXhand background router to start",
     ))
 }
 
@@ -2285,8 +2315,8 @@ fn draw_chatgpt_connector_refresh_notice(
 
     let block = Block::default()
         .title(ui_language.text(
-            " CatDesk Connector Refresh Required ",
-            " 需要重新整理 CatDesk Connector ",
+            " HEXhand Connector Refresh Required ",
+            " 需要重新整理 HEXhand Connector ",
         ))
         .borders(Borders::ALL)
         .border_type(palette.border_type)
@@ -2334,7 +2364,7 @@ fn draw_chatgpt_connector_refresh_notice(
         )),
         Line::from(""),
         Line::from(Span::styled(
-            ui_language.text("Remove CatDesk", "移除 CatDesk"),
+            ui_language.text("Remove HEXhand", "移除 HEXhand"),
             strong,
         )),
         Line::from(Span::styled(
@@ -2345,7 +2375,7 @@ fn draw_chatgpt_connector_refresh_notice(
             normal,
         )),
         Line::from(Span::styled(
-            ui_language.text("2. Find CatDesk and click it", "2. 找到 CatDesk 並點擊它"),
+            ui_language.text("2. Find HEXhand and click it", "2. 找到 HEXhand 並點擊它"),
             normal,
         )),
         Line::from(Span::styled(
@@ -2361,7 +2391,7 @@ fn draw_chatgpt_connector_refresh_notice(
         )),
         Line::from(""),
         Line::from(Span::styled(
-            ui_language.text("Add CatDesk Again", "重新加入 CatDesk"),
+            ui_language.text("Add HEXhand Again", "重新加入 HEXhand"),
             strong,
         )),
         Line::from(Span::styled(
@@ -2387,7 +2417,7 @@ fn draw_chatgpt_connector_refresh_notice(
             ),
         ]),
         Line::from(Span::styled(
-            ui_language.text("   Name           │ CatDesk", "   名稱           │ CatDesk"),
+            ui_language.text("   Name           │ HEXhand", "   名稱           │ HEXhand"),
             muted,
         )),
         {
@@ -2471,7 +2501,7 @@ fn draw_chatgpt_connector_refresh_notice(
                 Style::default().fg(palette.success_fg).bg(modal_bg),
             ),
             Span::styled(
-                ui_language.text(" I've re-added CatDesk   ", " 我已重新加入 CatDesk   "),
+                ui_language.text(" I've re-added HEXhand   ", " 我已重新加入 HEXhand   "),
                 muted,
             ),
             Span::styled(
@@ -2545,9 +2575,9 @@ fn draw_mode_select(
         chunks[0],
         &palette,
         if zh {
-            "CatDesk - 讓 ChatGPT Web 成為程式開發代理 =w="
+            "HEXhand - 讓 ChatGPT Web 成為程式開發代理 =w="
         } else {
-            "CatDesk - Turns ChatGPT Web into a coding agent =w="
+            "HEXhand - Turns ChatGPT Web into a coding agent =w="
         },
     );
 
@@ -2824,9 +2854,9 @@ async fn run_ngrok_auth_setup(
                             Err(e) => {
                                 error_message =
                                     Some(if current_ui_language.is_traditional_chinese() {
-                                        format!("無法儲存 ~/.catdesk/config.toml：{e}")
+                                        format!("無法儲存 ~/.hexhand/config.toml：{e}")
                                     } else {
-                                        format!("Failed to save ~/.catdesk/config.toml: {e}")
+                                        format!("Failed to save ~/.hexhand/config.toml: {e}")
                                     });
                             }
                         }
@@ -2992,9 +3022,9 @@ async fn run_ngrok_domain_setup(
                             Err(e) => {
                                 error_message =
                                     Some(if current_ui_language.is_traditional_chinese() {
-                                        format!("無法儲存 ~/.catdesk/config.toml：{e}")
+                                        format!("無法儲存 ~/.hexhand/config.toml：{e}")
                                     } else {
-                                        format!("Failed to save ~/.catdesk/config.toml: {e}")
+                                        format!("Failed to save ~/.hexhand/config.toml: {e}")
                                     });
                             }
                         }
@@ -3813,8 +3843,8 @@ mod tests {
             ("Tool mode: read-only", "工具模式：唯讀"),
             ("Widget detail mode: Expanded", "Widget 詳細模式：展開"),
             (
-                "Set CatDesk as co-author: enabled",
-                "將 CatDesk 設為共同作者：已啟用",
+                "Set HEXhand as co-author: enabled",
+                "將 HEXhand 設為共同作者：已啟用",
             ),
             (
                 "Saved ngrok domain to /tmp/config.toml",
@@ -3912,10 +3942,10 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
 
-        assert!(text.contains("CatDesk Connector Refresh Required"));
+        assert!(text.contains("HEXhand Connector Refresh Required"));
         assert!(text.contains("The connector changed in this update. Please folow below step:"));
         assert!(text.contains("https://chatgpt.com/#settings/Plugins"));
-        assert!(text.contains("2. Find CatDesk and click it"));
+        assert!(text.contains("2. Find HEXhand and click it"));
         assert!(text.contains("3. Click the ... button on upper right corner"));
         assert!(text.contains("4. Click delete"));
         assert!(text.contains("5. Open connector settings:"));
@@ -3927,7 +3957,7 @@ mod tests {
         assert!(text.contains("Click to reveal"));
         assert!(!text.contains("https://example.ngrok.app/secret/mcp"));
         assert!(!text.contains("[c]"));
-        assert!(text.contains("I've re-added CatDesk"));
+        assert!(text.contains("I've re-added HEXhand"));
         assert!(text.contains("Remind me next launch"));
     }
 
@@ -3950,18 +3980,18 @@ mod tests {
 
         let text = terminal_buffer_text(&terminal).replace(' ', "");
         for expected in [
-            "需要重新整理CatDeskConnector",
+            "需要重新整理HEXhandConnector",
             "此更新變更了Connector",
-            "移除CatDesk",
-            "找到CatDesk並點擊它",
-            "重新加入CatDesk",
+            "移除HEXhand",
+            "找到HEXhand並點擊它",
+            "重新加入HEXhand",
             "開啟Connector設定",
             "填寫表單",
-            "名稱│CatDesk",
+            "名稱│HEXhand",
             "MCP伺服器URL",
             "點擊顯示",
             "複製設定連結",
-            "我已重新加入CatDesk",
+            "我已重新加入HEXhand",
             "下次啟動再提醒我",
         ] {
             assert!(
@@ -4068,7 +4098,7 @@ mod tests {
         let palette = super::theme::all()[0].palette;
 
         terminal
-            .draw(|frame| draw_tui_header(frame, frame.area(), &palette, "CatDesk"))
+            .draw(|frame| draw_tui_header(frame, frame.area(), &palette, "HEXhand"))
             .expect("draw header");
 
         let buffer = terminal.backend().buffer();
@@ -4077,7 +4107,7 @@ mod tests {
             .collect::<String>();
         let version = format!("v{}", env!("CARGO_PKG_VERSION"));
 
-        assert!(row.contains("CatDesk"));
+        assert!(row.contains("HEXhand"));
         assert!(row.ends_with(&format!("{version} │")));
     }
 }
@@ -4134,8 +4164,8 @@ fn draw_workspace_selection_modal(
         .split(inner);
 
     let message = Paragraph::new(app.ui_language.text(
-        "Multiple CatDesk workspaces are running. Choose where this new ChatGPT session should run.",
-        "目前有多個 CatDesk Workspace。請選擇這個新 ChatGPT Session 要使用哪一個。",
+        "Multiple HEXhand workspaces are running. Choose where this new ChatGPT session should run.",
+        "目前有多個 HEXhand Workspace。請選擇這個新 ChatGPT Session 要使用哪一個。",
     ))
     .style(Style::default().fg(modal_fg).bg(modal_bg))
     .wrap(Wrap { trim: true });
@@ -4162,8 +4192,8 @@ fn draw_workspace_selection_modal(
     f.render_stateful_widget(list, chunks[1], &mut list_state);
 
     let footer = Paragraph::new(app.ui_language.text(
-        "[↑/↓] Select  [Enter] Bind  [q] Quit CatDesk",
-        "[↑/↓] 選擇  [Enter] 綁定  [q] 離開 CatDesk",
+        "[↑/↓] Select  [Enter] Bind  [q] Quit HEXhand",
+        "[↑/↓] 選擇  [Enter] 綁定  [q] 離開 HEXhand",
     ))
     .style(Style::default().fg(palette.muted_fg).bg(modal_bg));
     f.render_widget(footer, chunks[2]);
@@ -4406,7 +4436,7 @@ async fn run_settings(
                                     app.log(
                                         "INFO",
                                         format!(
-                                            "Set CatDesk as co-author: {}",
+                                            "Set HEXhand as co-author: {}",
                                             if enabled { "enabled" } else { "disabled" }
                                         ),
                                     );
@@ -4426,7 +4456,7 @@ async fn run_settings(
                                     // Keep existing slug, do nothing
                                 } else if selected_row == corner_end + 4 {
                                     if connector_change_blocked {
-                                        app.log("WARN", "Stop all other CatDesk workspaces before changing the MCP slug or ngrok domain.".into());
+                                        app.log("WARN", "Stop all other HEXhand workspaces before changing the MCP slug or ngrok domain.".into());
                                     } else {
                                         app.regenerate_mcp_slug();
                                         app.log("INFO", "Generated new random MCP slug".into());
@@ -4434,7 +4464,7 @@ async fn run_settings(
                                     }
                                 } else if selected_row == corner_end + 5 {
                                     if connector_change_blocked {
-                                        app.log("WARN", "Stop all other CatDesk workspaces before changing the MCP slug or ngrok domain.".into());
+                                        app.log("WARN", "Stop all other HEXhand workspaces before changing the MCP slug or ngrok domain.".into());
                                         continue;
                                     }
                                     let current_domain =
@@ -4802,7 +4832,7 @@ fn draw_settings(
             " {} [{}] {}",
             co_author_marker,
             co_author_row + 1,
-            ui_language.text("Set CatDesk as co-author", "將 CatDesk 設為共同作者")
+            ui_language.text("Set HEXhand as co-author", "將 HEXhand 設為共同作者")
         ),
         co_author_name_style,
     )]));
@@ -4824,8 +4854,8 @@ fn draw_settings(
 
     lines.push(Line::from(vec![Span::styled(
         ui_language.text(
-            "     When enabled, CatDesk automatically appends \"Co-Authored-By: CatDesk\" to git commits and blocks manually written CatDesk co-author trailers.",
-            "     啟用後，CatDesk 會自動在 Git commit 加上 \"Co-Authored-By: CatDesk\"，並阻止手動加入重複的 CatDesk co-author trailer。",
+            "     When enabled, HEXhand automatically appends \"Co-Authored-By: HEXhand\" to git commits and blocks manually written HEXhand co-author trailers.",
+            "     啟用後，HEXhand 會自動在 Git commit 加上 \"Co-Authored-By: HEXhand\"，並阻止手動加入重複的 HEXhand co-author trailer。",
         ),
         Style::default().fg(palette.muted_fg),
     )]));
@@ -4876,8 +4906,8 @@ fn draw_settings(
     ]));
     lines.push(Line::from(vec![Span::styled(
         ui_language.text(
-            "     When enabled, CatDesk exposes create_handoff and adds ChatGPT Library continuity guidance.",
-            "     啟用後，CatDesk 會提供 create_handoff，並加入 ChatGPT Library 延續指引。",
+            "     When enabled, HEXhand exposes create_handoff and adds ChatGPT Library continuity guidance.",
+            "     啟用後，HEXhand 會提供 create_handoff，並加入 ChatGPT Library 延續指引。",
         ),
         Style::default().fg(palette.muted_fg),
     )]));
@@ -5848,7 +5878,7 @@ async fn start_services(
         if workspace_worker {
             app.log(
                 "INFO",
-                "Workspace worker is ready; the existing CatDesk connector will route a ChatGPT session here when needed."
+                "Workspace worker is ready; the existing HEXhand connector will route a ChatGPT session here when needed."
                     .into(),
             );
         }
@@ -6277,7 +6307,7 @@ async fn run_tui(
                                             if line.contains("\u{2502}") {
                                                 if line.contains("Name") || line.contains("名稱")
                                                 {
-                                                    Some("CatDesk".to_string())
+                                                    Some("HEXhand".to_string())
                                                 } else if line.contains("Authentication")
                                                     || line.contains("驗證方式")
                                                 {
@@ -6392,8 +6422,8 @@ fn draw_ui(
         chunks[0],
         &palette,
         ui_language.text(
-            "CatDesk - Turns ChatGPT Web into a coding agent =w=",
-            "CatDesk - 讓 ChatGPT Web 變成程式代理 =w=",
+            "HEXhand - Turns ChatGPT Web into a coding agent =w=",
+            "HEXhand - 讓 ChatGPT Web 變成程式代理 =w=",
         ),
     );
 
@@ -6813,8 +6843,8 @@ fn draw_ui(
                 )]),
                 Line::from(vec![Span::styled(
                     ui_language.text(
-                        "     CatDesk will instantly connect and this screen will disappear.",
-                        "     CatDesk 會立即連線，這個畫面也會自動消失。",
+                        "     HEXhand will instantly connect and this screen will disappear.",
+                        "     HEXhand 會立即連線，這個畫面也會自動消失。",
                     ),
                     guide_detail_style,
                 )]),
@@ -6860,7 +6890,7 @@ fn draw_ui(
                         guide_detail_style,
                     ),
                     Span::styled(" │ ", guide_separator_style),
-                    Span::styled("CatDesk", guide_copyable_style),
+                    Span::styled("HEXhand", guide_copyable_style),
                 ]),
                 {
                     let mut spans = vec![

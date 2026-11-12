@@ -468,7 +468,7 @@ impl CommandJobManager {
             .ok_or_else(|| format!("unknown or expired command job: {job_id}"))
     }
 
-    /// Cancel every command still owned by CatDesk and wait briefly for the
+    /// Cancel every command still owned by HEXhand and wait briefly for the
     /// runners to terminate their process trees. Used during application exit;
     /// ordinary MCP request completion deliberately does not call this.
     pub async fn cancel_all(&self) {
@@ -649,7 +649,7 @@ where
                 }
                 job.append_output(
                     "stderr",
-                    format!("CatDesk failed to read {stream}: {error}\n").as_bytes(),
+                    format!("HEXhand failed to read {stream}: {error}\n").as_bytes(),
                 )
                 .await;
                 break;
@@ -715,7 +715,7 @@ async fn run_job(job: Arc<CommandJob>, mut cancel_rx: watch::Receiver<bool>) {
             let _ = process.wait().await;
             job.append_output(
                 "stderr",
-                format!("CatDesk failed while waiting for command: {error}\n").as_bytes(),
+                format!("HEXhand failed while waiting for command: {error}\n").as_bytes(),
             )
             .await;
             (CommandJobState::Failed, None)

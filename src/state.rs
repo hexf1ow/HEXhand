@@ -66,7 +66,7 @@ impl FlowBootstrapProgress {
     }
 }
 
-const APP_CONFIG_DIR_NAME: &str = ".catdesk";
+const APP_CONFIG_DIR_NAME: &str = ".hexhand";
 const APP_CONFIG_FILE_NAME: &str = "config.toml";
 pub const GPT_5_6_AND_EARLIER_USAGE_BUCKET: &str = "through-gpt-5.6";
 pub const CURRENT_USAGE_BUCKET: &str = GPT_5_6_AND_EARLIER_USAGE_BUCKET;

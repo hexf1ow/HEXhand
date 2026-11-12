@@ -392,43 +392,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "catdesk"
-version = "0.9.5"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "crossterm",
- "fs4",
- "globset",
- "hmac",
- "ignore",
- "image",
- "libc",
- "ngrok",
- "rand 0.8.5",
- "rand_mt",
- "ratatui",
- "regex",
- "reqwest",
- "rustls",
- "serde",
- "serde_json",
- "sha2",
- "similar",
- "tiktoken-rs",
- "time",
- "tokio",
- "tokio-stream",
- "toml",
- "tree-sitter",
- "tree-sitter-bash",
- "unicode-width 0.2.0",
- "uuid",
- "windows-sys 0.61.2",
- "zip",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1166,6 +1129,43 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "hexhand"
+version = "0.9.5"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "crossterm",
+ "fs4",
+ "globset",
+ "hmac",
+ "ignore",
+ "image",
+ "libc",
+ "ngrok",
+ "rand 0.8.5",
+ "rand_mt",
+ "ratatui",
+ "regex",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2",
+ "similar",
+ "tiktoken-rs",
+ "time",
+ "tokio",
+ "tokio-stream",
+ "toml",
+ "tree-sitter",
+ "tree-sitter-bash",
+ "unicode-width 0.2.0",
+ "uuid",
+ "windows-sys 0.61.2",
+ "zip",
+]
 
 [[package]]
 name = "hmac"

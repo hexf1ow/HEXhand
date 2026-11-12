@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CatDesk Review</title>
+    <title>HEXhand Review</title>
     <style>
       /* ChatGPT-aligned surface treatment.
-         Keep CatDesk's information density while matching the host's compact
+         Keep HEXhand's information density while matching the host's compact
          inline tool-card hierarchy and neutral surface treatment. The host
          does not expose a theme contract here, so light is the default and
          prefers-color-scheme is only a standalone/browser fallback. */
@@ -877,6 +877,7 @@
         justify-content: flex-end;
       }
 
+      .hexhand-logo { width:18px; height:18px; vertical-align:-3px; margin-right:6px; }
       .panel-title {
         color: var(--text);
         font-size: 12px;
@@ -5108,9 +5109,9 @@
           return (
             '<div class="show-detail-disable-confirm-root" id="show-detail-disable-confirm" aria-hidden="true">' +
             '<div class="show-detail-disable-confirm" role="alertdialog" aria-modal="true" aria-labelledby="show-detail-disable-confirm-title" aria-describedby="show-detail-disable-confirm-message">' +
-            '<h3 class="show-detail-disable-confirm-title" id="show-detail-disable-confirm-title">Disable CatDesk widget?</h3>' +
-            '<div class="show-detail-disable-confirm-message" id="show-detail-disable-confirm-message">If you disable the widget, you will no longer see CatDesk widgets in ChatGPT. You can enable them again at any time from CatDesk TUI settings.</div>' +
-            '<img class="show-detail-disable-confirm-image" src="__catdeskReenableWidgetImageDataUriPlaceholder__" alt="CatDesk TUI setting for re-enabling the widget">' +
+            '<h3 class="show-detail-disable-confirm-title" id="show-detail-disable-confirm-title">Disable HEXhand widget?</h3>' +
+            '<div class="show-detail-disable-confirm-message" id="show-detail-disable-confirm-message">If you disable the widget, you will no longer see HEXhand widgets in ChatGPT. You can enable them again at any time from HEXhand TUI settings.</div>' +
+            '<img class="show-detail-disable-confirm-image" src="__catdeskReenableWidgetImageDataUriPlaceholder__" alt="HEXhand TUI setting for re-enabling the widget">' +
             '<div class="show-detail-disable-confirm-actions">' +
             '<button type="button" class="show-detail-disable-confirm-button" data-cancel-show-detail-disable>Cancel</button>' +
             '<button type="button" class="show-detail-disable-confirm-button is-danger" data-confirm-show-detail-disable>Disable widget</button>' +
@@ -5125,10 +5126,10 @@
             '<div class="show-detail-disable-confirm-root" id="show-detail-disabled-success" aria-hidden="true">' +
             '<div class="show-detail-disable-confirm show-detail-disabled-success" role="dialog" aria-modal="true" aria-labelledby="show-detail-disabled-success-title" aria-describedby="show-detail-disabled-success-message">' +
             '<h3 class="show-detail-disable-confirm-title" id="show-detail-disabled-success-title">Widget disabled</h3>' +
-            '<div class="show-detail-disable-confirm-message" id="show-detail-disabled-success-message">To apply the disabled widget configuration in ChatGPT, remove CatDesk from ChatGPT settings, install it again, then start a new chat.</div>' +
+            '<div class="show-detail-disable-confirm-message" id="show-detail-disabled-success-message">To apply the disabled widget configuration in ChatGPT, remove HEXhand from ChatGPT settings, install it again, then start a new chat.</div>' +
             '<div class="show-detail-disabled-success-images">' +
-            '<img class="show-detail-disable-confirm-image" src="__catdeskRefreshCatdeskImageDataUriPlaceholder__" alt="Refresh CatDesk in ChatGPT settings">' +
-            '<img class="show-detail-disable-confirm-image" src="__catdeskRemoveCatdeskImageDataUriPlaceholder__" alt="Remove CatDesk from ChatGPT settings">' +
+            '<img class="show-detail-disable-confirm-image" src="__catdeskRefreshCatdeskImageDataUriPlaceholder__" alt="Refresh HEXhand in ChatGPT settings">' +
+            '<img class="show-detail-disable-confirm-image" src="__catdeskRemoveCatdeskImageDataUriPlaceholder__" alt="Remove HEXhand from ChatGPT settings">' +
             "</div>" +
             '<div class="show-detail-disable-confirm-actions">' +
             '<a class="show-detail-disable-confirm-button show-detail-disabled-success-button" href="https://chatgpt.com/#settings/Plugins" target="_blank" rel="noopener noreferrer">Open ChatGPT settings</a>' +
@@ -5328,7 +5329,7 @@
                   "catdesk",
                   current.agentsCatdeskAvailable
                     ? "Use ~/.catdesk"
-                    : "~/.catdesk is unavailable",
+                    : "~/.HEXhand is unavailable",
                   current.agentsCatdeskAvailable
                     ? "~/.catdesk"
                     : "~/.catdesk (unavailable)",
@@ -5835,7 +5836,7 @@
                   ? "~/.catdesk (unavailable)"
                   : "~/.catdesk";
                 ariaLabel = isDisabled
-                  ? "~/.catdesk is unavailable"
+                  ? "~/.HEXhand is unavailable"
                   : "Use ~/.catdesk";
               } else if (option === "codex") {
                 isDisabled = !view.agentsCodexAvailable;
@@ -7158,6 +7159,7 @@
           return (
             '<div class="detail-panel">' +
             '<div class="panel-head"><div class="panel-title">' +
+                  '<img class="hexhand-logo" src="data:image/png;base64,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" alt="">' +
             esc(current.toolName) +
             "</div></div>" +
             '<div class="instruction-required-message">' +

@@ -21,10 +21,10 @@ pub struct ProcessRunResult {
     pub stderr_truncated: bool,
 }
 
-/// A spawned shell process owned by CatDesk.
+/// A spawned shell process owned by HEXhand.
 ///
 /// Dropping this value is intentionally destructive: if the command is still
-/// alive, CatDesk terminates the process tree. This is what keeps a cancelled
+/// alive, HEXhand terminates the process tree. This is what keeps a cancelled
 /// MCP request from leaving a compiler or build process behind.
 pub struct SpawnedProcess {
     child: Child,
@@ -57,7 +57,7 @@ impl SpawnedProcess {
 
     /// Finalize ownership after the root process exits. Any descendants still
     /// alive at that point are terminated so a command cannot silently detach
-    /// work that outlives its CatDesk job.
+    /// work that outlives its HEXhand job.
     pub async fn disarm(&mut self) {
         self.tree.disarm().await;
         self.cleanup_command_dir();
@@ -658,13 +658,13 @@ pub async fn run_shell_command(
     if let Some(error) = stdout_capture.read_error.as_deref() {
         append_stderr_diagnostic(
             &mut stderr,
-            &format!("CatDesk failed to read stdout: {error}"),
+            &format!("HEXhand failed to read stdout: {error}"),
         );
     }
     if let Some(error) = stderr_capture.read_error.as_deref() {
         append_stderr_diagnostic(
             &mut stderr,
-            &format!("CatDesk failed to read stderr: {error}"),
+            &format!("HEXhand failed to read stderr: {error}"),
         );
     }
     if timed_out {
@@ -893,7 +893,7 @@ mod tests {
         tokio::time::sleep(Duration::from_millis(1_000)).await;
         assert!(
             !sentinel.exists(),
-            "successful root shell detached a descendant outside CatDesk ownership"
+            "successful root shell detached a descendant outside HEXhand ownership"
         );
         let _ = std::fs::remove_dir_all(root);
     }

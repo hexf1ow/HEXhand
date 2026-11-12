@@ -21,9 +21,9 @@ const PLIST_BUDDY_PATH: &str = "/usr/libexec/PlistBuddy";
 #[cfg(target_os = "macos")]
 const TERMINAL_APP_PATH: &str = "/System/Applications/Utilities/Terminal.app";
 #[cfg(target_os = "macos")]
-const PROFILE_FILE_NAME: &str = "CatDesk.terminal";
+const PROFILE_FILE_NAME: &str = "HEXhand.terminal";
 #[cfg(target_os = "macos")]
-const PROFILE_NAME: &str = "CatDesk";
+const PROFILE_NAME: &str = "HEXhand";
 #[cfg(target_os = "macos")]
 const SKIP_ENV: &str = "CATDESK_SKIP_MACOS_TERMINAL_PROFILE";
 #[cfg(target_os = "macos")]
@@ -47,7 +47,7 @@ const PROFILE_FONT_NAME: &str = "Menlo-Regular";
 #[cfg(target_os = "macos")]
 const PROFILE_FONT_SIZE: i32 = 11;
 #[cfg(target_os = "macos")]
-const PROFILE_BYTES: &[u8] = include_bytes!("../assets/CatDesk.terminal");
+const PROFILE_BYTES: &[u8] = include_bytes!("../assets/HEXhand.terminal");
 
 #[cfg(target_os = "macos")]
 enum PlistValueType {

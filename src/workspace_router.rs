@@ -78,7 +78,7 @@ struct WorkerPortReservation {
     port: u16,
 }
 
-/// Keeps the shared router alive while this CatDesk process is starting or
+/// Keeps the shared router alive while this HEXhand process is starting or
 /// running. Dropping the guard unregisters it on ordinary shutdown.
 pub struct RouterClientGuard {
     workspace_root: String,
@@ -97,7 +97,7 @@ pub struct RouterStartupLock {
 }
 
 fn registry_path() -> io::Result<PathBuf> {
-    Ok(user_home_dir()?.join(".catdesk").join(REGISTRY_FILE_NAME))
+    Ok(user_home_dir()?.join(".hexhand").join(REGISTRY_FILE_NAME))
 }
 
 fn registry_lock_path(path: &Path) -> PathBuf {
@@ -217,7 +217,7 @@ fn registration_status(registration: &WorkspaceRegistration) -> RegistrationStat
     let Ok(body) = serde_json::from_slice::<Value>(&response[body_offset + 4..]) else {
         return RegistrationStatus::Stale;
     };
-    if body.get("name").and_then(Value::as_str) == Some("CatDesk")
+    if body.get("name").and_then(Value::as_str) == Some("HEXhand")
         && body.get("pid").and_then(Value::as_u64) == Some(registration.pid as u64)
         && body.get("workspaceCanonical").and_then(Value::as_str)
             == Some(registration.workspace.as_str())
@@ -332,7 +332,7 @@ pub fn register_workspace(workspace_root: &str, port: u16) -> io::Result<Workspa
         registry.workspaces.push(registration.clone());
     }
 
-    // Restarting CatDesk in a workspace releases its existing session bindings so
+    // Restarting HEXhand in a workspace releases its existing session bindings so
     // those conversations resolve the workspace again on their next tool call.
     registry.sessions.retain(|_, bound| bound != &workspace);
     registry.worker_port_reservations.retain(|reservation| {
@@ -388,7 +388,7 @@ fn reserve_worker_port_at_for(path: &Path, workspace_root: &str, pid: u32) -> io
     }
     Err(io::Error::new(
         io::ErrorKind::AddrNotAvailable,
-        format!("no free CatDesk workspace worker port in {WORKER_PORT_START}..={WORKER_PORT_END}"),
+        format!("no free HEXhand workspace worker port in {WORKER_PORT_START}..={WORKER_PORT_END}"),
     ))
 }
 
@@ -570,7 +570,7 @@ fn begin_session_resolution_at(path: &Path, session_id: &str) -> Result<SessionR
         [] => {
             remove_pending_session(&mut registry, session_id);
             save_registry(path, &registry).map_err(|error| error.to_string())?;
-            Err("No live CatDesk workspace is available for this ChatGPT session. Start CatDesk in the workspace you want to use, then retry the tool call.".to_string())
+            Err("No live HEXhand workspace is available for this ChatGPT session. Start HEXhand in the workspace you want to use, then retry the tool call.".to_string())
         }
         [only] => {
             registry
@@ -641,7 +641,7 @@ fn wait_for_session_selection_at(
             .iter()
             .find(|pending| pending.session_id == session_id && pending.generation == generation)
         else {
-            return Err("The CatDesk workspace selection is no longer pending.".to_string());
+            return Err("The HEXhand workspace selection is no longer pending.".to_string());
         };
         let timed_out = pending
             .active_since_ms
@@ -649,7 +649,7 @@ fn wait_for_session_selection_at(
         if timed_out {
             remove_pending_generation(&mut registry, session_id, generation);
             save_registry(path, &registry).map_err(|error| error.to_string())?;
-            return Err("Timed out waiting for a CatDesk workspace selection in TUI.".to_string());
+            return Err("Timed out waiting for a HEXhand workspace selection in TUI.".to_string());
         }
     }
 }
@@ -696,7 +696,7 @@ fn bind_pending_session_at(
             .iter()
             .find(|entry| &entry.workspace == bound_workspace)
             .cloned()
-            .ok_or_else(|| "The selected CatDesk workspace is no longer registered.".to_string())?;
+            .ok_or_else(|| "The selected HEXhand workspace is no longer registered.".to_string())?;
         remove_pending_session(&mut registry, session_id);
         save_registry(path, &registry).map_err(|error| error.to_string())?;
         return Ok(registration);
@@ -724,9 +724,9 @@ fn bind_pending_session_at(
         .iter()
         .find(|entry| entry.workspace == workspace)
         .cloned()
-        .ok_or_else(|| "The selected CatDesk workspace is no longer registered.".to_string())?;
+        .ok_or_else(|| "The selected HEXhand workspace is no longer registered.".to_string())?;
     if registration_status(&registration) != RegistrationStatus::Live {
-        return Err("The selected CatDesk workspace is not currently available.".to_string());
+        return Err("The selected HEXhand workspace is not currently available.".to_string());
     }
 
     registry
@@ -790,7 +790,7 @@ pub async fn router_is_running(mcp_slug: &str) -> bool {
         return false;
     }
     response.json::<Value>().await.ok().is_some_and(|value| {
-        value.get("name").and_then(Value::as_str) == Some("CatDesk")
+        value.get("name").and_then(Value::as_str) == Some("HEXhand")
             && value.get("router").and_then(Value::as_bool) == Some(true)
             && value.get("ngrokRunning").and_then(Value::as_bool) == Some(true)
     })
@@ -826,7 +826,7 @@ mod tests {
                             let mut request = [0_u8; 1024];
                             let _ = stream.read(&mut request);
                             let body = serde_json::json!({
-                                "name":"CatDesk", "pid":std::process::id(),
+                                "name":"HEXhand", "pid":std::process::id(),
                                 "router":false, "workspace":workspace,
                                 "workspaceCanonical":workspace
                             })
@@ -1160,7 +1160,7 @@ mod tests {
             let (mut stream, _) = listener.accept().unwrap();
             let mut request = [0_u8; 1024];
             let _ = stream.read(&mut request);
-            let body = "<html>not CatDesk</html>";
+            let body = "<html>not HEXhand</html>";
             let response = format!(
                 "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                 body.len(),

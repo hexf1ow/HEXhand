@@ -36,7 +36,7 @@ const STATELESS_FLOW_ID: &str = "stateless";
 
 fn write_tools_list_diagnostic(has_session: bool) -> std::io::Result<()> {
     let path = crate::state::user_home_dir()?
-        .join(".catdesk")
+        .join(".hexhand")
         .join("router-diagnostic.log");
     append_tools_list_diagnostic(&path, has_session)
 }
@@ -1026,7 +1026,7 @@ async fn health(State(s): State<ServerState>) -> Json<Value> {
     let app = s.app.lock().await;
     Json(json!({
         "status": "ok",
-        "name": "CatDesk",
+        "name": "HEXhand",
         "description": "MCP Tools for ChatGPT to control your computer and browser",
         "mode": app.mode.label(),
         "tool_mode": app.tool_mode.label(),
@@ -1643,7 +1643,7 @@ mod tests {
                 let workspace = workspace.clone();
                 async move {
                     Json(json!({
-                        "name": "CatDesk", "router": false,
+                        "name": "HEXhand", "router": false,
                         "workspace": workspace, "workspaceCanonical": workspace,
                     "pid": std::process::id()
                     }))
@@ -3985,7 +3985,7 @@ async fn route_workspace_tool_call(
             -32042,
             "WorkspaceSessionRequired",
             Some(json!({
-                "message": "The shared CatDesk router requires params._meta.openai/session to route tools/call requests to a workspace worker."
+                "message": "The shared HEXhand router requires params._meta.openai/session to route tools/call requests to a workspace worker."
             })),
         ));
     };

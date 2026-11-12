@@ -47,10 +47,14 @@ jobs:
             binary: target/aarch64-unknown-linux-musl/release/hexhand
           - runner: macos-15-intel
             asset: hexhand-darwin-x64
-            binary: target/release/hexhand
-          - runner: macos-15
+            target: x86_64-apple-darwin
+            binary: target/x86_64-apple-darwin/release/hexhand
+          # built on the Intel runner too: GitHub keeps cancelling macos-arm64 jobs
+          # on capacity, and one cancelled job used to skip the whole release
+          - runner: macos-15-intel
             asset: hexhand-darwin-arm64
-            binary: target/release/hexhand
+            target: aarch64-apple-darwin
+            binary: target/aarch64-apple-darwin/release/hexhand
           - runner: windows-2022
             asset: hexhand-win32-x64.exe
             binary: target/release/hexhand.exe
@@ -61,12 +65,15 @@ jobs:
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal
 
-      - name: Install musl toolchain
+      - name: Add build target
         if: matrix.target != ''
+        run: rustup target add --toolchain stable "${{ matrix.target }}"
+
+      - name: Install musl toolchain
+        if: matrix.target && contains(matrix.target, 'musl')
         run: |
           sudo apt-get update
           sudo apt-get install -y musl-tools
-          rustup target add --toolchain stable "${{ matrix.target }}"
 
       - name: Build release binary
         shell: bash

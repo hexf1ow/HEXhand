@@ -30,3 +30,20 @@ if ($parts -notcontains $dir) { $parts += $dir }
 "cmd:   " + (Test-Path $cmd)
 "icon:  " + (Test-Path $icon)
 "path:  " + (([Environment]::GetEnvironmentVariable("Path", "User")) -like "*\.hexhand\connector*")
+
+# Reserve the connector port for this user. Without it, HttpListener needs an
+# elevated shell and the right-click menu appears to do nothing. This needs admin
+# ONCE; after that the menu runs as a normal user.
+$port = 3210
+$me = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+$admin = $me.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$reserved = (netsh http show urlacl) -match ":$port/"
+if ($reserved) {
+    "urlacl: already reserved"
+} elseif ($admin) {
+    netsh http add urlacl url=http://+:$port/ user="$env:USERDOMAIN\$env:USERNAME" | Out-Null
+    "urlacl: " + [bool]((netsh http show urlacl) -match ":$port/")
+} else {
+    "urlacl: NOT reserved — re-run this script once in an ADMIN PowerShell,"
+    "        otherwise the right-click menu cannot open the port."
+}

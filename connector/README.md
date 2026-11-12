@@ -6,7 +6,7 @@ somewhere else work in it. Same ten tools, same wire format, three platforms.
 | Platform | File | Start it with |
 |---|---|---|
 | Windows | `windows/hexhand-here.cmd` | double-click, or `hexhand-here.cmd D:\work\site` |
-| Windows (right-click menu) | `windows/install-launcher.ps1` | run once — adds **HEXhand here** to the folder right-click menu |
+| Windows (right-click menu) | `windows/install-launcher.ps1` | run once **in an admin PowerShell** — adds **HEXhand here** to the folder right-click menu and reserves the port so later clicks need no admin |
 | Linux | `hexhand-here.sh` | `./hexhand-here.sh ~/work/site` |
 | macOS | `hexhand-here.sh` | `./hexhand-here.sh ~/work/site` |
 
@@ -31,6 +31,16 @@ CATDESK_REMOTE_TOKEN=<token>
 
 - Windows: PowerShell 5.1 (built in).
 - Linux/macOS: Python 3.9+ (standard library only — nothing to install).
+
+## Windows: run the installer once as admin
+
+`install-launcher.ps1` does two things you only want to do once:
+
+- adds **HEXhand here** to the right-click menu of folders and folder backgrounds;
+- reserves TCP 3210 for your user (`netsh http add urlacl`). **Without this the menu
+  starts and immediately fails to bind**, because Windows will not let a normal user open
+  an HTTP listener — it looks like the menu is broken. Run it once in an elevated
+  PowerShell and that is the last time you need admin.
 
 ## Firewall
 

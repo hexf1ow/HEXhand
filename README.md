@@ -1,69 +1,190 @@
-# HEXhand
+<p align="center">
+  <img src="assets/hexhand-wordmark.png" alt="HEXhand" width="600">
+</p>
 
-Turns ChatGPT web into a coding agent that works in **your own folders** — on your machine,
-or on a machine you reach over your own network.
+<p align="center">
+  <b>Turn ChatGPT web into a coding agent that works in your own folders.</b><br>
+  No plugins, no cloud workspace, no copy-pasting code back and forth.
+</p>
+
+<p align="center">
+  <a href="https://github.com/hexf1ow/HEXhand/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/hexf1ow/HEXhand?color=0a84ff"></a>
+  <a href="LICENSE"><img alt="Licence" src="https://img.shields.io/badge/licence-MIT-green"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-lightgrey">
+</p>
+
+---
+
+## What HEXhand is
+
+HEXhand is a small program that runs on **your** machine and exposes your project folder to ChatGPT
+through the Model Context Protocol (MCP). ChatGPT can then read files, write files, search, run
+commands and check the output — on your disk, with your toolchain, in your folder.
+
+- **Your files stay yours.** Nothing is uploaded. HEXhand serves the folder to ChatGPT on request.
+- **Your machine does the work.** Builds, tests and scripts run locally, not in someone's cloud.
+- **One file to install.** A single binary. No Node, no Docker, no Rust toolchain.
+- **Optional remote mode.** Keep HEXhand running on a server and drive a folder on a different
+  computer through a small connector (see [Remote mode](#remote-mode)).
 
 HEXhand is a rebranded distribution of [CatDesk](https://github.com/Xeift/CatDesk) (MIT).
-See [NOTICE](NOTICE) for attribution and the list of changes. The upstream documentation is kept
-at [docs/CATDESK-UPSTREAM-README.md](docs/CATDESK-UPSTREAM-README.md).
+See [NOTICE](NOTICE) for attribution and the exact list of changes.
 
-## Two ways to run it
+## What you need
 
-**1. Local (default)** — the app runs next to the folder it works in. Start it, open the URL it
-prints, add that URL as a connector in ChatGPT.
+| | |
+|---|---|
+| ChatGPT | A paid plan with custom connectors (Plus, Pro, Team or Enterprise) |
+| A folder | The project you want ChatGPT to work in |
+| A tunnel | A free [ngrok](https://ngrok.com) account — one authtoken and one static domain. HEXhand uses it so ChatGPT can reach your machine without you opening ports. |
 
-**2. Remote (HEXhand extra)** — the app runs on a server, and a small connector runs next to the
-folder on another machine. Every tool call is forwarded to the connector, so the agent edits that
-machine's files while ChatGPT only ever talks to your server.
+## Install
 
+Grab the file for your platform from
+[**Releases**](https://github.com/hexf1ow/HEXhand/releases/latest) and run it.
+
+**Linux**
+
+```bash
+curl -L -o hexhand https://github.com/hexf1ow/HEXhand/releases/latest/download/hexhand-linux-x64
+chmod +x hexhand
+./hexhand
 ```
-ChatGPT -> https://your-host/agent/<slug>/mcp -> HEXhand (container)
-                                               -> connector (other machine)
-                                               -> the folder you activated
+
+**macOS** (Apple Silicon shown; use `hexhand-darwin-x64` on Intel)
+
+```bash
+curl -L -o hexhand https://github.com/hexf1ow/HEXhand/releases/latest/download/hexhand-darwin-arm64
+chmod +x hexhand
+xattr -d com.apple.quarantine hexhand 2>/dev/null   # clears the "unverified developer" flag
+./hexhand
 ```
 
-## Quick start (prebuilt binary)
+**Windows**
 
-1. Download the archive for your platform from **Releases**.
-2. Run the binary. It prints an MCP URL and a workspace slug.
-3. In ChatGPT: add that URL as a connector, then ask it to work in your project.
+Download `hexhand-win32-x64.exe` from
+[Releases](https://github.com/hexf1ow/HEXhand/releases/latest) and double-click it, or run it from a
+terminal:
 
-Nothing else is installed — no Rust toolchain, no tunnel account.
+```powershell
+.\hexhand-win32-x64.exe
+```
+
+> Windows SmartScreen will warn you the first time because the binary is not code-signed. Choose
+> **More info → Run anyway**.
+
+Verify a download against the published checksums: `sha256sum -c SHA256SUMS` (Linux/macOS) or
+`Get-FileHash` (Windows). `SHA256SUMS` is attached to every release.
+
+## First run — five minutes
+
+1. **Start HEXhand** in the folder you want ChatGPT to work in:
+
+   ```bash
+   cd ~/projects/my-app
+   hexhand
+   ```
+
+2. **Follow the onboarding** in the terminal. It asks for:
+   - your **ngrok authtoken** (from the ngrok dashboard),
+   - a **static domain** — the free one ngrok gives your account.
+
+   Both are stored in `~/.hexhand/config.toml` and reused from then on.
+
+3. **Copy the MCP URL** it prints, e.g.
+
+   ```
+   https://your-domain.ngrok-free.app/<slug>/mcp
+   ```
+
+   The `<slug>` is a random 16-character identifier. **It is the only credential** — treat the whole
+   URL like a password.
+
+4. **Add it to ChatGPT:** *Settings → Connectors → Add custom connector*, paste the URL, save.
+   (On some plans this appears as *Developer mode → Add connector*.)
+
+5. **Test it.** Ask ChatGPT: *"List the files in this project and tell me what it does."*
+
+## What ChatGPT can do with it
+
+| Tool | What it does |
+|---|---|
+| `run_command` | Run a shell command in the folder and return the output |
+| `start_command` | Start a long-running command in the background |
+| `poll_command` | Read more output from a background command |
+| `cancel_command` | Stop a background command |
+| `read` | Read one or more files |
+| `write` | Create or overwrite a file |
+| `edit` | Replace an exact snippet inside a file |
+| `search` | Search text across the folder |
+| `delete` | Delete a file or folder |
+| `catdesk_instruction` | Ask for the rules of the current workspace |
+
+Working-folder rules are enforced: any path outside the folder HEXhand was started in is refused.
+
+## Remote mode
+
+Run HEXhand on a server and let it drive a folder on another machine — useful for a build box, a
+Windows desktop, or a lab machine you don't want to install on.
+
+**On the machine that holds the files**, start the connector inside that folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File hexhand-here.ps1 -Path "D:\work\site"
+```
+
+It listens on port 3210, accepts only requests with the shared bearer token, and refuses any path
+outside the folder it was started in.
+
+**On the server**, point HEXhand at it:
+
+```bash
+CATDESK_REMOTE_URL=http://<connector-host>:3210/ \
+CATDESK_REMOTE_TOKEN=<shared token> \
+hexhand
+```
+
+Every tool call is then forwarded to the connector, so the files ChatGPT edits live on the other
+machine. The variable names keep their original spelling so existing CatDesk connectors keep working.
+
+## Configuration
+
+Settings live in `~/.hexhand/config.toml` (Windows: `%USERPROFILE%\.hexhand\config.toml`).
+If you used CatDesk before, an existing `~/.catdesk` folder is carried over automatically on first
+start — you keep your slug and settings.
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Could not listen on port 3200` | Another HEXhand/CatDesk instance is already running. Close it, or let HEXhand pick the next port. |
+| ChatGPT says the connector failed | Check the tunnel is up: open the MCP URL in a browser — you should get a JSON-RPC error, not a connection failure. |
+| The URL changed after a restart | You are not using a static ngrok domain. Set one in the ngrok dashboard and re-run onboarding. |
+| A command runs forever | Ask ChatGPT to use `start_command`, then `poll_command`, then `cancel_command`. |
+| Windows: "unverified publisher" | Expected — the binary is not code-signed. *More info → Run anyway*. |
 
 ## Build from source
 
 ```bash
 git clone https://github.com/hexf1ow/HEXhand.git
 cd HEXhand
-cargo build --release      # binary at target/release/hexhand
+cargo build --release      # -> target/release/hexhand
 ```
 
-Rust 1.85+ (edition 2024). The release profile uses LTO and strips symbols.
+Rust 1.85+ (edition 2024). The release profile uses LTO and strips symbols. Container builds are
+supported too — see `deploy/Dockerfile` and `deploy/entrypoint.sh`.
 
-## Remote mode
+## Security notes
 
-On the machine that holds the files, run the connector inside the folder you want the agent to use:
+- The `<slug>` in the URL is the only thing protecting your workspace. Anyone with the URL can use
+  every tool. Rotate it by onboarding again if it leaks.
+- HEXhand serves one folder: the one it was started in. Paths outside it are rejected.
+- The tunnel is outbound from your machine; you never open a port on your router.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File hexhand-here.ps1 -Path "D:\some\folder"
-```
+## Licence and attribution
 
-Point the server at it:
+MIT — see [LICENSE](LICENSE).
 
-```
-CATDESK_REMOTE_URL=http://<connector-host>:3210/
-CATDESK_REMOTE_TOKEN=<shared token>
-```
-
-The connector refuses any path outside the folder it was started in. The environment variable
-names keep their original spelling so existing CatDesk connectors keep working.
-
-## Configuration
-
-Settings live in `~/.hexhand/config.toml` (created on first run). An older `~/.catdesk` folder is
-carried over automatically the first time HEXhand starts.
-
-## Licence
-
-MIT, same as upstream. See [LICENSE](LICENSE). CatDesk is copyright (c) 2026 xeift.eth.
+HEXhand is a rebranded distribution of **CatDesk**, copyright (c) 2026 xeift.eth, also MIT.
+Upstream documentation is kept in [docs/CATDESK-UPSTREAM-README.md](docs/CATDESK-UPSTREAM-README.md).
 HEXhand is not affiliated with or endorsed by the CatDesk authors.

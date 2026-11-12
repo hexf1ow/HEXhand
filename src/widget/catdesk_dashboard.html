@@ -3529,7 +3529,7 @@
             return validPayload(next);
           }
 
-          if (toolName === "catdesk_instruction") {
+          if (toolName === "hexhand_instruction") {
             var workspacePath = readNonEmptyString(data.workspacePath);
             var workspacePathDisplay = readNonEmptyString(
               data.workspacePathDisplay,
@@ -3609,7 +3609,7 @@
               binagotchyCards === null
             ) {
               return invalidPayload(
-                "catdesk_instruction widget payload is missing required fields.",
+                "hexhand_instruction widget payload is missing required fields.",
               );
             }
             next.workspacePath = workspacePath;
@@ -7682,7 +7682,7 @@
 
           var isCatDeskInstruction =
             view.panelMode === "tool_call" &&
-            view.toolName === "catdesk_instruction";
+            view.toolName === "hexhand_instruction";
           var isInstructionRequired =
             view.panelMode === "tool_call" &&
             view.payloadKind === "instruction_required";
@@ -7984,7 +7984,7 @@
           if (
             nextView.panelMode === "tool_call" &&
             !nextView.hasChanges &&
-            nextView.toolName !== "catdesk_instruction" &&
+            nextView.toolName !== "hexhand_instruction" &&
             nextView.toolName !== "run_command" &&
             nextView.toolName !== "start_command" &&
             nextView.toolName !== "poll_command" &&

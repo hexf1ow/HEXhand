@@ -140,7 +140,7 @@ Verify a download against the published checksums: `sha256sum -c SHA256SUMS` (Li
 | `edit` | Replace an exact snippet inside a file |
 | `search` | Search text across the folder |
 | `delete` | Delete a file or folder |
-| `catdesk_instruction` | Ask for the rules of the current workspace |
+| `hexhand_instruction` | Ask for the rules of the current workspace |
 
 Working-folder rules are enforced: any path outside the folder HEXhand was started in is refused.
 

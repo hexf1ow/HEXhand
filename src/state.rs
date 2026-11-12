@@ -2515,7 +2515,7 @@ toolCallCount = 0
         FlowBootstrapWidget {
             uri: format!("ui://widget/catdesk-dashboard.html?toolName={tool_name}"),
             tool_name: tool_name.to_string(),
-            label: if tool_name == "catdesk_instruction" {
+            label: if tool_name == "hexhand_instruction" {
                 "instruction".to_string()
             } else {
                 tool_name.to_string()
@@ -2559,7 +2559,7 @@ toolCallCount = 0
             "start_command",
             "poll_command",
             "cancel_command",
-            "catdesk_instruction",
+            "hexhand_instruction",
             "read",
             "search",
             "write",
@@ -2744,7 +2744,7 @@ toolCallCount = 0
         );
         app.record_flow(
             "stateless",
-            &["tools/call:catdesk_instruction".to_string()],
+            &["tools/call:hexhand_instruction".to_string()],
             FlowDirection::Forward,
         );
 

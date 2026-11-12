@@ -72,7 +72,7 @@ struct ServerState {
     devtools: Option<Arc<Mutex<DevtoolsBridge>>>,
     command_jobs: CommandJobManager,
     ui_events: UnboundedSender<ServerUiEvent>,
-    catdesk_instruction_called: Arc<AtomicBool>,
+    hexhand_instruction_called: Arc<AtomicBool>,
     workspace_action_secret: Arc<[u8; 32]>,
 }
 
@@ -162,7 +162,7 @@ pub fn router(
         devtools,
         command_jobs,
         ui_events,
-        catdesk_instruction_called: Arc::new(AtomicBool::new(false)),
+        hexhand_instruction_called: Arc::new(AtomicBool::new(false)),
         workspace_action_secret: new_workspace_action_secret(),
     };
     let secret_prefix = mcp_path
@@ -707,7 +707,7 @@ fn bootstrap_widgets_from_tools_list_response(response: &Value) -> Vec<FlowBoots
             Some(FlowBootstrapWidget {
                 uri: uri.to_string(),
                 tool_name: tool_name.to_string(),
-                label: if tool_name == "catdesk_instruction" {
+                label: if tool_name == "hexhand_instruction" {
                     "instruction".to_string()
                 } else {
                     tool_name.to_string()
@@ -1059,7 +1059,7 @@ fn build_workspace_action_url(
     format!("{url}?cap={token}")
 }
 
-fn rewrite_catdesk_instruction_action_urls(
+fn rewrite_hexhand_instruction_action_urls(
     result: &mut Option<Value>,
     public_base_url: Option<&str>,
     mcp_path: &str,
@@ -1074,7 +1074,7 @@ fn rewrite_catdesk_instruction_action_urls(
     else {
         return;
     };
-    if structured.get("toolName").and_then(Value::as_str) != Some("catdesk_instruction") {
+    if structured.get("toolName").and_then(Value::as_str) != Some("hexhand_instruction") {
         return;
     }
     let Some(widget_payload) = result_obj
@@ -1172,14 +1172,14 @@ fn rewrite_catdesk_instruction_action_urls(
     }
 }
 
-fn attach_catdesk_instruction_actions(
+fn attach_hexhand_instruction_actions(
     result: &mut Option<Value>,
     public_base_url: Option<&str>,
     mcp_path: &str,
     mascot_seed: u64,
     partner_binagotchy_seed: Option<&str>,
 ) {
-    rewrite_catdesk_instruction_action_urls(result, public_base_url, mcp_path, None);
+    rewrite_hexhand_instruction_action_urls(result, public_base_url, mcp_path, None);
     let Some(result_obj) = result.as_mut().and_then(Value::as_object_mut) else {
         return;
     };
@@ -1192,7 +1192,7 @@ fn attach_catdesk_instruction_actions(
     let Some(tool_name) = structured.get("toolName").and_then(Value::as_str) else {
         return;
     };
-    if tool_name != "catdesk_instruction" {
+    if tool_name != "hexhand_instruction" {
         return;
     }
 
@@ -1671,7 +1671,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: events,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(false)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(false)),
             workspace_action_secret: new_workspace_action_secret(),
         };
         let Json(body) = health(State(state)).await;
@@ -1747,13 +1747,13 @@ mod tests {
         let instruction = json!({
             "method": "tools/call",
             "params": {
-                "name": "catdesk_instruction",
+                "name": "hexhand_instruction",
                 "arguments": {}
             }
         });
         assert_eq!(
             request_flow_label(&instruction),
-            "tools/call:catdesk_instruction"
+            "tools/call:hexhand_instruction"
         );
     }
 
@@ -1834,9 +1834,9 @@ mod tests {
                         }
                     },
                     {
-                        "name": "catdesk_instruction",
+                        "name": "hexhand_instruction",
                         "_meta": {
-                            "openai/outputTemplate": "ui://widget/catdesk-dashboard.html?widgetRevision=2&toolName=catdesk_instruction"
+                            "openai/outputTemplate": "ui://widget/catdesk-dashboard.html?widgetRevision=2&toolName=hexhand_instruction"
                         }
                     },
                     {
@@ -1854,7 +1854,7 @@ mod tests {
         assert_eq!(widgets.len(), 2);
         assert_eq!(widgets[0].tool_name, "read");
         assert_eq!(widgets[0].label, "read");
-        assert_eq!(widgets[1].tool_name, "catdesk_instruction");
+        assert_eq!(widgets[1].tool_name, "hexhand_instruction");
         assert_eq!(widgets[1].label, "instruction");
     }
 
@@ -1909,7 +1909,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -1946,7 +1946,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -1997,7 +1997,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -2056,7 +2056,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -2089,7 +2089,7 @@ mod tests {
                 "start_command",
                 "poll_command",
                 "cancel_command",
-                "catdesk_instruction",
+                "hexhand_instruction",
                 "read",
                 "search",
                 "write",
@@ -2130,7 +2130,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -2273,7 +2273,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -2450,7 +2450,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(false)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(false)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -2551,7 +2551,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -2805,16 +2805,16 @@ mod tests {
     }
 
     #[test]
-    fn attach_catdesk_instruction_actions_injects_partner_and_urls() {
+    fn attach_hexhand_instruction_actions_injects_partner_and_urls() {
         let mut result = Some(json!({
             "structuredContent": {
                 "schema": "catdesk.review.v1",
-                "toolName": "catdesk_instruction"
+                "toolName": "hexhand_instruction"
             },
             "_meta": {
                 WIDGET_PAYLOAD_META_KEY: {
                     "schema": "catdesk.review.v1",
-                    "toolName": "catdesk_instruction",
+                    "toolName": "hexhand_instruction",
                     "binagotchyCards": [{
                         "folder": "20260403T010203000Z_deadbeef",
                         "seed": "deadbeef"
@@ -2823,7 +2823,7 @@ mod tests {
             }
         }));
 
-        attach_catdesk_instruction_actions(
+        attach_hexhand_instruction_actions(
             &mut result,
             Some("https://example.ngrok.app"),
             "/secret-slug/mcp",
@@ -2922,7 +2922,7 @@ mod tests {
             devtools: None,
             command_jobs: command_jobs.clone(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
         let command = if cfg!(windows) {
@@ -3019,7 +3019,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn catdesk_instruction_unlocks_tools_until_process_restart() {
+    async fn hexhand_instruction_unlocks_tools_until_process_restart() {
         let workspace_root = unique_temp_path("catdesk-instruction-gate-workspace");
         let config_root = unique_temp_path("catdesk-instruction-gate-config");
         let config_path = config_root.join("config.toml");
@@ -3041,7 +3041,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: instruction_called.clone(),
+            hexhand_instruction_called: instruction_called.clone(),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -3083,7 +3083,7 @@ mod tests {
 
         let instruction_response = post_mcp(
             State(server_state.clone()),
-            tool_call_body("catdesk_instruction", json!({})),
+            tool_call_body("hexhand_instruction", json!({})),
         )
         .await;
         assert_eq!(instruction_response.status(), StatusCode::OK);
@@ -3151,7 +3151,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: instruction_called.clone(),
+            hexhand_instruction_called: instruction_called.clone(),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -3216,7 +3216,7 @@ mod tests {
 
         let instruction = post_mcp_json_with_show_detail_mode(
             &server_state,
-            tool_call_body("catdesk_instruction", json!({})),
+            tool_call_body("hexhand_instruction", json!({})),
             ShowDetailMode::Disable,
         )
         .await;
@@ -3326,7 +3326,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -3401,7 +3401,7 @@ mod tests {
                 "id": "route-test",
                 "result": {
                     "structuredContent": {
-                        "toolName": "catdesk_instruction",
+                        "toolName": "hexhand_instruction",
                         "instructionText": "worker instruction",
                         "workspaceRoot": "/tmp/worker"
                     },
@@ -3444,7 +3444,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
         let request = json!({
@@ -3452,7 +3452,7 @@ mod tests {
             "id": "route-test",
             "method": "tools/call",
             "params": {
-                "name": "catdesk_instruction",
+                "name": "hexhand_instruction",
                 "arguments": {},
                 "_meta": {"openai/session": "session-worker-test"}
             }
@@ -3553,7 +3553,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
         let request = json!({
@@ -3609,12 +3609,12 @@ mod tests {
         let app_c = mock_worker_health(&workspace_c);
         let task_a = tokio::spawn(async move {
             axum::serve(a, app_a.fallback(post(|| async {
-                Json(json!({"jsonrpc":"2.0","id":4,"result":{"tools":[{"name":"catdesk_instruction"},{"name":"run_command"}]}}))
+                Json(json!({"jsonrpc":"2.0","id":4,"result":{"tools":[{"name":"hexhand_instruction"},{"name":"run_command"}]}}))
             }))).await.unwrap();
         });
         let task_b = tokio::spawn(async move {
             axum::serve(b, app_b.fallback(post(|| async {
-                Json(json!({"jsonrpc":"2.0","id":4,"result":{"tools":[{"name":"catdesk_instruction"},{"name":"browser_navigate"}]}}))
+                Json(json!({"jsonrpc":"2.0","id":4,"result":{"tools":[{"name":"hexhand_instruction"},{"name":"browser_navigate"}]}}))
             }))).await.unwrap();
         });
         let task_c = tokio::spawn(async move {
@@ -3642,7 +3642,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
         let body = json!({"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"_meta":{}}});
@@ -3663,7 +3663,7 @@ mod tests {
             .collect();
         assert!(names.contains(&"run_command"));
         assert!(names.contains(&"navigate_page"));
-        assert!(names.contains(&"catdesk_instruction"));
+        assert!(names.contains(&"hexhand_instruction"));
         assert!(!names.contains(&"browser_worker_tool"));
 
         // tools/list with a session must return the same connector-wide tools
@@ -3766,7 +3766,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
         let request = json!({
@@ -3845,7 +3845,7 @@ mod tests {
             devtools: None,
             command_jobs: CommandJobManager::new(),
             ui_events: ui_tx,
-            catdesk_instruction_called: Arc::new(AtomicBool::new(true)),
+            hexhand_instruction_called: Arc::new(AtomicBool::new(true)),
             workspace_action_secret: new_workspace_action_secret(),
         };
 
@@ -4069,7 +4069,7 @@ async fn route_workspace_tool_call(
         let secret_prefix = mcp_path.strip_suffix("/mcp").unwrap_or_default();
         let routed_mcp_path = format!("{secret_prefix}/workspace/{}/mcp", target.port);
         let mut result = forwarded_json.get("result").cloned();
-        rewrite_catdesk_instruction_action_urls(
+        rewrite_hexhand_instruction_action_urls(
             &mut result,
             router_public_url.as_deref(),
             &routed_mcp_path,
@@ -4279,7 +4279,7 @@ async fn post_mcp_inner(
         set_catdesk_as_co_author,
         handoff_enabled,
         sandbox_enabled,
-        s.catdesk_instruction_called.load(Ordering::Acquire),
+        s.hexhand_instruction_called.load(Ordering::Acquire),
         &s.command_jobs,
         &s.devtools,
         show_detail_mode,
@@ -4290,13 +4290,13 @@ async fn post_mcp_inner(
     if let Some(resp) = response {
         let mut resp = resp;
         if req.method == "tools/call" {
-            if req.params.get("name").and_then(Value::as_str) == Some("catdesk_instruction")
+            if req.params.get("name").and_then(Value::as_str) == Some("hexhand_instruction")
                 && resp.error.is_none()
                 && resp.result.as_ref().is_some_and(|result| {
                     result.get("isError").and_then(Value::as_bool) != Some(true)
                 })
             {
-                s.catdesk_instruction_called.store(true, Ordering::Release);
+                s.hexhand_instruction_called.store(true, Ordering::Release);
             }
             let turn_token_usage = turn_token_usage_for_response(&req, resp.result.as_ref());
             let usage_totals = {
@@ -4313,7 +4313,7 @@ async fn post_mcp_inner(
                 app.all_time_usage_totals()
             };
             attach_history_usage(&mut resp.result, &usage_totals);
-            attach_catdesk_instruction_actions(
+            attach_hexhand_instruction_actions(
                 &mut resp.result,
                 ngrok_url.as_deref(),
                 &mcp_path,

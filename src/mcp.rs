@@ -45,8 +45,8 @@ const INITIAL_TOOL_NAME_PLACEHOLDER: &str = "__catdeskInitialToolNamePlaceholder
 const INITIAL_MASCOT_OUTLINE_PLACEHOLDER: &str = "__catdeskInitialMascotOutlinePlaceholder__";
 const MAX_COMMAND_OUTPUT_CHARS: usize = 24_000;
 const CATDESK_INSTRUCTION_REQUIRED_MESSAGE: &str =
-    "Call catdesk_instruction successfully before using any other HEXhand tool.";
-const CATDESK_INSTRUCTION_REQUIRED_WIDGET_MESSAGE: &str = "ChatGPT didn’t call catdesk_instruction. HEXhand is asking it to call it now. You can ignore this message. It will retry automatically.";
+    "Call hexhand_instruction successfully before using any other HEXhand tool.";
+const CATDESK_INSTRUCTION_REQUIRED_WIDGET_MESSAGE: &str = "ChatGPT didn’t call hexhand_instruction. HEXhand is asking it to call it now. You can ignore this message. It will retry automatically.";
 const CATDESK_INSTRUCTION_REQUIRED_CODE: &str = "CATDESK_INSTRUCTION_REQUIRED";
 
 // ── JSON-RPC types ──────────────────────────────────────────
@@ -133,7 +133,7 @@ pub async fn handle_request(
     set_catdesk_as_co_author: bool,
     handoff_enabled: bool,
     sandbox_enabled: bool,
-    catdesk_instruction_called: bool,
+    hexhand_instruction_called: bool,
     command_jobs: &CommandJobManager,
     devtools: &Option<Arc<Mutex<DevtoolsBridge>>>,
 ) -> Option<JsonRpcResponse> {
@@ -147,7 +147,7 @@ pub async fn handle_request(
         set_catdesk_as_co_author,
         handoff_enabled,
         sandbox_enabled,
-        catdesk_instruction_called,
+        hexhand_instruction_called,
         command_jobs,
         devtools,
         current_show_detail_mode(),
@@ -165,7 +165,7 @@ pub(crate) async fn handle_request_with_show_detail_mode(
     set_catdesk_as_co_author: bool,
     handoff_enabled: bool,
     sandbox_enabled: bool,
-    catdesk_instruction_called: bool,
+    hexhand_instruction_called: bool,
     command_jobs: &CommandJobManager,
     devtools: &Option<Arc<Mutex<DevtoolsBridge>>>,
     show_detail_mode: ShowDetailMode,
@@ -186,8 +186,8 @@ pub(crate) async fn handle_request_with_show_detail_mode(
         ),
         "tools/call" => {
             let tool_name = tool_name_from_request(req);
-            if tool_name != "catdesk_instruction" && !catdesk_instruction_called {
-                Some(catdesk_instruction_required_response_with_show_detail_mode(
+            if tool_name != "hexhand_instruction" && !hexhand_instruction_called {
+                Some(hexhand_instruction_required_response_with_show_detail_mode(
                     req,
                     show_detail_mode,
                 ))
@@ -471,7 +471,7 @@ fn local_tool_output_schema(name: &str) -> Option<Value> {
     properties.insert("success".to_string(), json!({ "type": "boolean" }));
 
     match name {
-        "catdesk_instruction" => {
+        "hexhand_instruction" => {
             properties.insert("instructionText".to_string(), json!({ "type": "string" }));
             properties.insert("workspaceRoot".to_string(), json!({ "type": "string" }));
         }
@@ -756,9 +756,9 @@ fn ensure_local_tool_output_schema(tool: &mut Value) {
     tool_obj.insert("outputSchema".to_string(), schema);
 }
 
-fn catdesk_instruction_tool_descriptor() -> Value {
+fn hexhand_instruction_tool_descriptor() -> Value {
     json!({
-        "name": "catdesk_instruction",
+        "name": "hexhand_instruction",
         "title": "Get usage instructions",
         "description": "Read HEXhand operating guidance. You must call this tool successfully once after HEXhand starts before calling any other HEXhand tool.",
         "inputSchema": {
@@ -1002,7 +1002,7 @@ async fn handle_tools_list_with_show_detail_mode(
             }));
         }
 
-        tools.push(catdesk_instruction_tool_descriptor());
+        tools.push(hexhand_instruction_tool_descriptor());
         tools.push(json!({
             "name": "read",
             "title": "Read files",
@@ -1133,7 +1133,7 @@ async fn handle_tools_list_with_show_detail_mode(
     }
 
     if !mode.computer_enabled() && mode.browser_enabled() {
-        tools.push(catdesk_instruction_tool_descriptor());
+        tools.push(hexhand_instruction_tool_descriptor());
     }
 
     // Browser tools — get from devtools bridge
@@ -1251,8 +1251,8 @@ async fn handle_tools_call_with_show_detail_mode(
     });
 
     let mut response = {
-        if tool_name == "catdesk_instruction" {
-            handle_catdesk_instruction_with_show_detail_mode(
+        if tool_name == "hexhand_instruction" {
+            handle_hexhand_instruction_with_show_detail_mode(
                 req,
                 workspace_root,
                 mascot_seed,
@@ -2141,7 +2141,7 @@ fn tool_error_response(req: &JsonRpcRequest, text: String) -> JsonRpcResponse {
     tool_response(req, text, None, true)
 }
 
-fn catdesk_instruction_required_widget_payload(req: &JsonRpcRequest) -> Value {
+fn hexhand_instruction_required_widget_payload(req: &JsonRpcRequest) -> Value {
     let tool_name = tool_name_from_request(req);
     let mut payload = base_widget_payload("tool_call", &tool_name, "failed", Some(&tool_name));
     payload.insert("payloadKind".to_string(), json!("instruction_required"));
@@ -2154,7 +2154,7 @@ fn catdesk_instruction_required_widget_payload(req: &JsonRpcRequest) -> Value {
     Value::Object(payload)
 }
 
-fn catdesk_instruction_required_response_with_show_detail_mode(
+fn hexhand_instruction_required_response_with_show_detail_mode(
     req: &JsonRpcRequest,
     show_detail_mode: ShowDetailMode,
 ) -> JsonRpcResponse {
@@ -2174,7 +2174,7 @@ fn catdesk_instruction_required_response_with_show_detail_mode(
         return response;
     }
     if let Some(result) = response.result.as_mut() {
-        attach_widget_payload_meta(result, catdesk_instruction_required_widget_payload(req));
+        attach_widget_payload_meta(result, hexhand_instruction_required_widget_payload(req));
     }
     if let Some(result) = response.result.take() {
         response.result = Some(enrich_tool_result_with_show_detail_mode(
@@ -2371,7 +2371,7 @@ fn widget_path_strings(path: &Path) -> (String, String) {
     )
 }
 
-fn catdesk_instruction_text(
+fn hexhand_instruction_text(
     workspace_root: &str,
     mode: Mode,
     tool_mode: ToolMode,
@@ -2461,22 +2461,22 @@ Always specify the branch explicitly when using `git push`."#
     Ok(lines.join("\n"))
 }
 
-fn catdesk_instruction_structured(
+fn hexhand_instruction_structured(
     workspace_root: &str,
     mode: Mode,
     tool_mode: ToolMode,
     handoff_enabled: bool,
 ) -> std::io::Result<Value> {
     let instruction_text =
-        catdesk_instruction_text(workspace_root, mode, tool_mode, handoff_enabled)?;
+        hexhand_instruction_text(workspace_root, mode, tool_mode, handoff_enabled)?;
     Ok(json!({
-        "toolName": "catdesk_instruction",
+        "toolName": "hexhand_instruction",
         "instructionText": instruction_text,
         "workspaceRoot": workspace_root,
     }))
 }
 
-fn catdesk_instruction_widget_payload_with_cards(
+fn hexhand_instruction_widget_payload_with_cards(
     workspace_root: &str,
     mascot_seed: u64,
     _mode: Mode,
@@ -2487,7 +2487,7 @@ fn catdesk_instruction_widget_payload_with_cards(
         "tool_call",
         "HEXhand Instruction",
         "done",
-        Some("catdesk_instruction"),
+        Some("hexhand_instruction"),
     ));
     let Some(payload_obj) = payload.as_object_mut() else {
         return Err(std::io::Error::other(
@@ -2532,13 +2532,13 @@ fn catdesk_instruction_widget_payload_with_cards(
     Ok(payload)
 }
 
-fn catdesk_instruction_widget_payload(
+fn hexhand_instruction_widget_payload(
     workspace_root: &str,
     mascot_seed: u64,
     mode: Mode,
     tool_mode: ToolMode,
 ) -> std::io::Result<Value> {
-    catdesk_instruction_widget_payload_with_cards(
+    hexhand_instruction_widget_payload_with_cards(
         workspace_root,
         mascot_seed,
         mode,
@@ -2547,7 +2547,7 @@ fn catdesk_instruction_widget_payload(
     )
 }
 
-fn handle_catdesk_instruction_with_show_detail_mode(
+fn handle_hexhand_instruction_with_show_detail_mode(
     req: &JsonRpcRequest,
     workspace_root: &str,
     mascot_seed: u64,
@@ -2557,7 +2557,7 @@ fn handle_catdesk_instruction_with_show_detail_mode(
     show_detail_mode: ShowDetailMode,
 ) -> JsonRpcResponse {
     let instruction_text =
-        match catdesk_instruction_text(workspace_root, mode, tool_mode, handoff_enabled) {
+        match hexhand_instruction_text(workspace_root, mode, tool_mode, handoff_enabled) {
             Ok(value) => value,
             Err(error) => {
                 return tool_error_response(
@@ -2567,7 +2567,7 @@ fn handle_catdesk_instruction_with_show_detail_mode(
             }
         };
     let structured =
-        match catdesk_instruction_structured(workspace_root, mode, tool_mode, handoff_enabled) {
+        match hexhand_instruction_structured(workspace_root, mode, tool_mode, handoff_enabled) {
             Ok(value) => value,
             Err(error) => {
                 return tool_error_response(
@@ -2582,12 +2582,12 @@ fn handle_catdesk_instruction_with_show_detail_mode(
     }
 
     let widget_payload =
-        match catdesk_instruction_widget_payload(workspace_root, mascot_seed, mode, tool_mode) {
+        match hexhand_instruction_widget_payload(workspace_root, mascot_seed, mode, tool_mode) {
             Ok(value) => value,
             Err(error) => {
                 return tool_error_response(
                     req,
-                    format!("Failed to build catdesk_instruction widget payload: {error}"),
+                    format!("Failed to build hexhand_instruction widget payload: {error}"),
                 );
             }
         };
@@ -2721,7 +2721,7 @@ fn tool_descriptor_should_attach_widget(name: &str) -> bool {
             | "start_command"
             | "poll_command"
             | "cancel_command"
-            | "catdesk_instruction"
+            | "hexhand_instruction"
             | "search"
             | "read"
             | "write"
@@ -4095,7 +4095,7 @@ mod tests {
             .iter()
             .filter_map(|tool| tool.get("name").and_then(Value::as_str))
             .collect();
-        assert!(names.contains("catdesk_instruction"));
+        assert!(names.contains("hexhand_instruction"));
         assert!(names.contains("run_command"));
         assert!(names.contains("navigate_page"));
         assert!(names.contains("take_screenshot"));
@@ -4892,7 +4892,7 @@ mod tests {
                 "start_command",
                 "poll_command",
                 "cancel_command",
-                "catdesk_instruction",
+                "hexhand_instruction",
                 "read",
                 "search",
                 "write",
@@ -4953,8 +4953,8 @@ mod tests {
 
         for (tool_name, field) in [
             ("run_command", "stdout"),
-            ("catdesk_instruction", "instructionText"),
-            ("catdesk_instruction", "workspaceRoot"),
+            ("hexhand_instruction", "instructionText"),
+            ("hexhand_instruction", "workspaceRoot"),
             ("read", "files"),
             ("search", "searchResults"),
             ("write", "bytesWritten"),
@@ -5014,7 +5014,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn browser_only_tools_list_exposes_required_catdesk_instruction() {
+    async fn browser_only_tools_list_exposes_required_hexhand_instruction() {
         let req = JsonRpcRequest {
             jsonrpc: "2.0".into(),
             id: Some(json!("req-tools-list")),
@@ -5033,7 +5033,7 @@ mod tests {
         let instruction = &tools[0];
         assert_eq!(
             instruction.get("name").and_then(Value::as_str),
-            Some("catdesk_instruction")
+            Some("hexhand_instruction")
         );
         assert!(
             instruction
@@ -5093,7 +5093,7 @@ mod tests {
             blocked_structured.get("message").and_then(Value::as_str),
             Some(CATDESK_INSTRUCTION_REQUIRED_MESSAGE)
         );
-        assert!(result_text(&blocked).contains("Call catdesk_instruction successfully"));
+        assert!(result_text(&blocked).contains("Call hexhand_instruction successfully"));
         let blocked_widget = blocked
             .result
             .as_ref()
@@ -5162,7 +5162,7 @@ mod tests {
     #[test]
     fn instruction_required_disable_skips_widget_payload() {
         let req = tool_call_request("read", json!({ "paths": ["notes.txt"] }));
-        let response = catdesk_instruction_required_response_with_show_detail_mode(
+        let response = hexhand_instruction_required_response_with_show_detail_mode(
             &req,
             ShowDetailMode::Disable,
         );
@@ -5201,14 +5201,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn browser_only_mode_can_call_catdesk_instruction() {
+    async fn browser_only_mode_can_call_hexhand_instruction() {
         let workspace_root = std::env::temp_dir().join(format!(
             "catdesk-mcp-browser-instruction-{}",
             Uuid::new_v4()
         ));
         std::fs::create_dir_all(&workspace_root).expect("create workspace");
         let workspace_root_str = workspace_root.to_string_lossy().into_owned();
-        let req = tool_call_request("catdesk_instruction", json!({}));
+        let req = tool_call_request("hexhand_instruction", json!({}));
 
         let response = handle_tools_call(
             &req,
@@ -5256,7 +5256,7 @@ mod tests {
 
         assert_eq!(
             names,
-            vec!["catdesk_instruction", "read", "search", "create_handoff"]
+            vec!["hexhand_instruction", "read", "search", "create_handoff"]
         );
     }
 
@@ -5286,7 +5286,7 @@ mod tests {
             .iter()
             .filter_map(|tool| tool.get("name").and_then(Value::as_str))
             .collect::<Vec<_>>();
-        assert_eq!(names, vec!["catdesk_instruction", "read", "search"]);
+        assert_eq!(names, vec!["hexhand_instruction", "read", "search"]);
 
         let workspace_root =
             std::env::temp_dir().join(format!("catdesk-mcp-disabled-handoff-{}", Uuid::new_v4()));
@@ -5898,7 +5898,7 @@ mod tests {
     }
 
     #[test]
-    fn catdesk_instruction_points_new_sessions_to_library_handoff_search() {
+    fn hexhand_instruction_points_new_sessions_to_library_handoff_search() {
         let workspace_root = std::env::temp_dir().join(format!(
             "catdesk-mcp-handoff-instruction-{}",
             Uuid::new_v4()
@@ -5910,7 +5910,7 @@ mod tests {
         let filename = handoff::handoff_filename(&workspace_root_str).expect("handoff filename");
 
         let instruction =
-            catdesk_instruction_text(&workspace_root_str, Mode::Both, ToolMode::MultiTools, true)
+            hexhand_instruction_text(&workspace_root_str, Mode::Both, ToolMode::MultiTools, true)
                 .expect("build instruction");
         assert!(instruction.contains("files.search"));
         assert!(instruction.contains("persistent ChatGPT Library"));
@@ -5929,9 +5929,9 @@ mod tests {
     }
 
     #[test]
-    fn catdesk_instruction_omits_library_guidance_when_handoff_is_disabled() {
+    fn hexhand_instruction_omits_library_guidance_when_handoff_is_disabled() {
         let instruction =
-            catdesk_instruction_text("/tmp/workspace", Mode::Both, ToolMode::MultiTools, false)
+            hexhand_instruction_text("/tmp/workspace", Mode::Both, ToolMode::MultiTools, false)
                 .expect("build instruction");
         assert!(!instruction.contains("persistent ChatGPT Library"));
         assert!(!instruction.contains("Library Search must be enabled"));
@@ -5939,9 +5939,9 @@ mod tests {
     }
 
     #[test]
-    fn catdesk_instruction_tells_agents_not_to_write_catdesk_trailers() {
+    fn hexhand_instruction_tells_agents_not_to_write_catdesk_trailers() {
         let instruction =
-            catdesk_instruction_text("/tmp/workspace", Mode::Both, ToolMode::MultiTools, false)
+            hexhand_instruction_text("/tmp/workspace", Mode::Both, ToolMode::MultiTools, false)
                 .expect("build instruction");
         assert!(instruction.contains("Do not manually add HEXhand co-author attribution"));
         assert!(instruction.contains("HEXhand manages that automatically"));
@@ -6428,12 +6428,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn catdesk_instruction_result_does_not_emit_text_content() {
+    async fn hexhand_instruction_result_does_not_emit_text_content() {
         let workspace_root =
             std::env::temp_dir().join(format!("catdesk-mcp-instruction-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&workspace_root).expect("create workspace");
 
-        let req = tool_call_request("catdesk_instruction", json!({}));
+        let req = tool_call_request("hexhand_instruction", json!({}));
         let workspace_root_str = workspace_root.to_string_lossy().into_owned();
         let response = handle_tools_call(
             &req,
@@ -6478,16 +6478,16 @@ mod tests {
     }
 
     #[test]
-    fn catdesk_instruction_disable_skips_dedicated_widget_payload() {
+    fn hexhand_instruction_disable_skips_dedicated_widget_payload() {
         let workspace_root = std::env::temp_dir().join(format!(
             "catdesk-mcp-instruction-disable-{}",
             Uuid::new_v4()
         ));
         std::fs::create_dir_all(&workspace_root).expect("create workspace");
         let workspace_root_str = workspace_root.to_string_lossy().into_owned();
-        let req = tool_call_request("catdesk_instruction", json!({}));
+        let req = tool_call_request("hexhand_instruction", json!({}));
 
-        let response = handle_catdesk_instruction_with_show_detail_mode(
+        let response = handle_hexhand_instruction_with_show_detail_mode(
             &req,
             &workspace_root_str,
             1,
@@ -6505,7 +6505,7 @@ mod tests {
                 .and_then(|result| result.get("_meta"))
                 .and_then(|meta| meta.get(WIDGET_PAYLOAD_META_KEY))
                 .is_none(),
-            "Disable must skip the dedicated catdesk_instruction widget payload"
+            "Disable must skip the dedicated hexhand_instruction widget payload"
         );
 
         let _ = std::fs::remove_dir_all(workspace_root);
@@ -7322,9 +7322,9 @@ hello world"
 
     #[test]
     fn widget_resource_uri_includes_revision_for_cache_busting() {
-        let uri = current_widget_resource_uri_for_tool("catdesk_instruction");
+        let uri = current_widget_resource_uri_for_tool("hexhand_instruction");
         assert!(uri.contains("widgetRevision=7"));
-        assert!(uri.contains("toolName=catdesk_instruction"));
+        assert!(uri.contains("toolName=hexhand_instruction"));
     }
 
     #[test]
@@ -7512,15 +7512,15 @@ hello world"
     }
 
     #[test]
-    fn catdesk_instruction_puts_binagotchy_cards_in_meta_only() {
-        let structured = catdesk_instruction_structured(
+    fn hexhand_instruction_puts_binagotchy_cards_in_meta_only() {
+        let structured = hexhand_instruction_structured(
             "/tmp/workspace",
             Mode::Both,
             ToolMode::MultiTools,
             true,
         )
         .expect("structured payload");
-        let widget_payload = catdesk_instruction_widget_payload_with_cards(
+        let widget_payload = hexhand_instruction_widget_payload_with_cards(
             "/tmp/workspace",
             1,
             Mode::Both,
@@ -7535,7 +7535,7 @@ hello world"
 
         assert_eq!(
             structured.get("toolName").and_then(Value::as_str),
-            Some("catdesk_instruction")
+            Some("hexhand_instruction")
         );
         assert!(
             structured

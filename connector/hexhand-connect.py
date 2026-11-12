@@ -242,6 +242,8 @@ TOOLS = {
     "start_command": tool_start_command,
     "poll_command": tool_poll_command,
     "cancel_command": tool_cancel_command,
+    "hexhand_instruction": tool_instruction,
+    # alias: connectors should keep working with older app builds
     "catdesk_instruction": tool_instruction,
     "read": tool_read,
     "write": tool_write,
@@ -259,7 +261,7 @@ SCHEMAS = [
      "inputSchema": {"type": "object", "properties": {"job_id": {"type": "string"}}, "required": ["job_id"]}},
     {"name": "cancel_command", "description": "Stop a background command",
      "inputSchema": {"type": "object", "properties": {"job_id": {"type": "string"}}, "required": ["job_id"]}},
-    {"name": "catdesk_instruction", "description": "Workspace instructions",
+    {"name": "hexhand_instruction", "description": "Workspace instructions",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "read", "description": "Read files in the workspace",
      "inputSchema": {"type": "object", "properties": {"paths": {"type": "array", "items": {"type": "string"}}}, "required": ["paths"]}},

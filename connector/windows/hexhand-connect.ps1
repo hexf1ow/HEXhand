@@ -193,10 +193,11 @@ function Invoke-Tool([string]$Name, $ToolInput) {
         "edit"                { return Invoke-Edit $ToolInput }
         "search"              { return Invoke-Search $ToolInput }
         "delete"              { return Invoke-Delete $ToolInput }
-        "catdesk_instruction" {
+        "hexhand_instruction" {
             return Text-Result ("You are working in " + $Workspace + " through the HEXhand connector. " +
                 "Paths are relative to that folder and nothing outside it is reachable.")
         }
+        "catdesk_instruction" { return Invoke-Tool "hexhand_instruction" $ToolInput }
         default { return Text-Result ("unknown tool: " + $Name) $true }
     }
 }
@@ -211,7 +212,7 @@ $tools = @(
     @{ name = "edit";           description = "Replace text in a file"; inputSchema = @{ type = "object"; properties = @{ path = @{ type = "string" }; edits = @{ type = "array" } }; required = @("path","edits") } },
     @{ name = "search";         description = "Search text in the workspace"; inputSchema = @{ type = "object"; properties = @{ pattern = @{ type = "string" }; path = @{ type = "string" }; glob = @{ type = "string" }; max_matches = @{ type = "integer" } }; required = @("pattern") } },
     @{ name = "delete";         description = "Delete a file or folder"; inputSchema = @{ type = "object"; properties = @{ path = @{ type = "string" }; recursive = @{ type = "boolean" } }; required = @("path") } },
-    @{ name = "catdesk_instruction"; description = "Workspace instructions"; inputSchema = @{ type = "object"; properties = @{} } }
+    @{ name = "hexhand_instruction"; description = "Workspace instructions"; inputSchema = @{ type = "object"; properties = @{} } }
 )
 
 $prefix = "http://+:$Port/"

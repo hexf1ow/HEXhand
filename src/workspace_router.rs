@@ -126,7 +126,7 @@ pub(crate) fn process_is_alive(pid: u32) -> bool {
         System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
     };
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
-    if handle == 0 {
+    if handle.is_null() {
         return false;
     }
     unsafe {

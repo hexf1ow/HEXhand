@@ -18,8 +18,17 @@ if ($proc) {
     "$(Get-Date -Format s)  killed wedged connector" | Out-File $log -Append -Encoding ascii
 }
 
+# Restart the folder the user last activated from the right-click menu.
+$stateFile = Join-Path $dir "last_folder.txt"
+$folder = "D:\NumeCORE_Firm"
+if (Test-Path $stateFile) {
+    $saved = (Get-Content $stateFile -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($saved -and (Test-Path $saved)) { $folder = $saved.Trim() }
+}
+"$(Get-Date -Format s)  restarting for $folder" | Out-File $log -Append -Encoding ascii
+
 Start-Process -FilePath (Join-Path $dir "hexhand-here.cmd") `
-    -ArgumentList '"D:\NumeCORE_Firm"' -WindowStyle Hidden
+    -ArgumentList ('"' + $folder + '"') -WindowStyle Hidden
 Start-Sleep -Seconds 6
 $ok = [bool](Get-NetTCPConnection -LocalPort 3210 -State Listen)
 "$(Get-Date -Format s)  restarted connector ok=$ok" | Out-File $log -Append -Encoding ascii

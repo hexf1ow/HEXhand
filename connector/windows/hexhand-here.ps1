@@ -31,4 +31,8 @@ foreach ($o in $others) {
 }
 if ($others) { Start-Sleep -Seconds 2 }
 
+# Remember the chosen folder so the watchdog restarts THIS one, not a fixed path.
+$state = Join-Path $PSScriptRoot "last_folder.txt"
+Set-Content -Path $state -Value $target -Encoding ascii
+
 & "$PSScriptRoot\hexhand-connect.ps1" -Folder $target -Port $Port

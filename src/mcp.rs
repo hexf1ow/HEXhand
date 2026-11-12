@@ -1230,11 +1230,13 @@ async fn handle_tools_call_with_show_detail_mode(
         }
     }
     let params = &req.params;
-    let tool_name = params
-        .get("name")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
+    let tool_name = normalize_tool_name(
+        params
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+    )
+    .to_string();
 
     if tool_name == "create_handoff" && !handoff_enabled {
         return tool_error_response(req, "Unknown tool: create_handoff".to_string());
@@ -2205,12 +2207,24 @@ fn tool_arguments(req: &JsonRpcRequest) -> Value {
 }
 
 fn tool_name_from_request(req: &JsonRpcRequest) -> String {
-    req.params
+    let name = req
+        .params
         .get("name")
         .and_then(Value::as_str)
         .filter(|name| !name.is_empty())
-        .unwrap_or("unknown_tool")
-        .to_string()
+        .unwrap_or("unknown_tool");
+    // Clients cache the tool list, so a connector added before the rename keeps
+    // sending the old name. Normalise it here: the call still runs and the card
+    // shows the current name instead of the retired one.
+    let name = normalize_tool_name(name);
+    name.to_string()
+}
+
+fn normalize_tool_name(name: &str) -> &str {
+    match name {
+        "catdesk_instruction" => "hexhand_instruction",
+        other => other,
+    }
 }
 
 fn workspace_agents_path(workspace_root: &str) -> PathBuf {

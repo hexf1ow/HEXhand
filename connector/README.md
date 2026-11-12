@@ -32,6 +32,16 @@ CATDESK_REMOTE_TOKEN=<token>
 - Windows: PowerShell 5.1 (built in).
 - Linux/macOS: Python 3.9+ (standard library only — nothing to install).
 
+## Keep it running
+
+A connector that dies makes every tool call hang until the client times out, which looks like a
+server fault. `windows/watchdog.ps1` checks port 3210 and restarts the connector if it is missing or
+wedged. Register it once:
+
+```powershell
+schtasks /create /tn "HEXhandWatchdog" /tr "powershell -NoProfile -ExecutionPolicy Bypass -File %USERPROFILE%\.hexhand\connector\watchdog.ps1" /sc minute /mo 5 /rl LIMITED /f
+```
+
 ## Windows: run the installer once as admin
 
 `install-launcher.ps1` does two things you only want to do once:

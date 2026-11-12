@@ -24,6 +24,9 @@ commands and check the output — on your disk, with your toolchain, in your fol
 - **Your files stay yours.** Nothing is uploaded. HEXhand serves the folder to ChatGPT on request.
 - **Your machine does the work.** Builds, tests and scripts run locally, not in someone's cloud.
 - **One file to install.** A single binary. No Node, no Docker, no Rust toolchain.
+- **No tunnel account, no relay, no quota.** Other builds of this tool send your traffic through a
+  third-party tunnel service and stop working when the free quota runs out. HEXhand serves on its own
+  port and lets you put your own name and certificate in front — unlimited, and it cannot be metered.
 - **Optional remote mode.** Keep HEXhand running on a server and drive a folder on a different
   computer through a small connector (see [Remote mode](#remote-mode)).
 
@@ -49,9 +52,13 @@ That is the whole cost of ownership.
 
 | | |
 |---|---|
-| ChatGPT | A paid plan with custom connectors (Plus, Pro, Team or Enterprise) |
+| ChatGPT | A plan that allows custom connectors (Plus, Pro, Team or Enterprise) |
 | A folder | The project you want ChatGPT to work in |
-| A tunnel | A free [ngrok](https://ngrok.com) account — one authtoken and one static domain. HEXhand uses it so ChatGPT can reach your machine without you opening ports. |
+| A way to reach it | Optional. Run HEXhand on your own network and point Caddy at it — see [Run it free on your own server](#run-it-free-on-your-own-server). A free DuckDNS name is enough. **No tunnel account, no relay service, no quota.** |
+
+> Older CatDesk builds forced an ngrok account before they would start. HEXhand does not: with no
+> token configured it starts in self-hosted mode and serves on its local port. A tunnel is opt-in
+> (`tunnelEnabled = true` in the config) for people who want a public URL without running a proxy.
 
 ## Install
 
@@ -100,20 +107,20 @@ Verify a download against the published checksums: `sha256sum -c SHA256SUMS` (Li
    hexhand
    ```
 
-2. **Follow the onboarding** in the terminal. It asks for:
-   - your **ngrok authtoken** (from the ngrok dashboard),
-   - a **static domain** — the free one ngrok gives your account.
+2. **Pick a mode** — *Control Computer* is the usual choice. That is the whole onboarding: no
+   account, no token, no sign-up.
 
-   Both are stored in `~/.hexhand/config.toml` and reused from then on.
-
-3. **Copy the MCP URL** it prints, e.g.
+3. **Copy the MCP URL** it shows, e.g.
 
    ```
-   https://your-domain.ngrok-free.app/<slug>/mcp
+   http://127.0.0.1:3200/AbCdEf1234567890/mcp
    ```
 
-   The `<slug>` is a random 16-character identifier. **It is the only credential** — treat the whole
-   URL like a password.
+   The `<slug>` is a random 16-character identifier generated for you. **It is the only
+   credential** — treat the URL like a password.
+
+   That URL is local. To reach it from ChatGPT, put a reverse proxy in front (next section) or turn
+   on the optional tunnel.
 
 4. **Add it to ChatGPT:** *Settings → Connectors → Add custom connector*, paste the URL, save.
    (On some plans this appears as *Developer mode → Add connector*.)
@@ -254,7 +261,7 @@ start — you keep your slug and settings.
 |---|---|
 | `Could not listen on port 3200` | Another HEXhand/CatDesk instance is already running. Close it, or let HEXhand pick the next port. |
 | ChatGPT says the connector failed | Check the tunnel is up: open the MCP URL in a browser — you should get a JSON-RPC error, not a connection failure. |
-| The URL changed after a restart | You are not using a static ngrok domain. Set one in the ngrok dashboard and re-run onboarding. |
+| ChatGPT cannot reach the URL | A local URL is not reachable from outside. Put Caddy in front with a real hostname (see the deployment section), or enable the optional tunnel. |
 | A command runs forever | Ask ChatGPT to use `start_command`, then `poll_command`, then `cancel_command`. |
 | Windows: "unverified publisher" | Expected — the binary is not code-signed. *More info → Run anyway*. |
 

@@ -389,6 +389,10 @@ pub struct AppConfig {
     pub ngrok_authtoken: Option<String>,
     pub mcp_slug: Option<String>,
     pub ngrok_domain: Option<String>,
+    /// Opt-in public tunnel. Absent/false means self-hosted: HEXhand serves on
+    /// its local port and you point Caddy (or anything else) at it.
+    #[serde(default)]
+    pub tunnel_enabled: bool,
     #[serde(default)]
     pub last_started_version: Option<String>,
     #[serde(default)]
@@ -433,6 +437,7 @@ impl Default for AppConfig {
             ngrok_authtoken: None,
             mcp_slug: None,
             ngrok_domain: None,
+            tunnel_enabled: false,
             last_started_version: None,
             chatgpt_connector_revision: None,
             agents_path_mode: AgentsPathMode::Default,
@@ -715,6 +720,9 @@ pub struct AppState {
     pub ui_language: UiLanguage,
     pub mcp_slug: String,
     pub ngrok_domain: Option<String>,
+    /// True only when the user has asked for a public tunnel. HEXhand defaults
+    /// to self-hosted: no tunnel account, no third-party relay.
+    pub tunnel_requested: bool,
     pub is_returning_user: bool,
     pub chatgpt_connector_refresh_required: bool,
     pub chatgpt_connector_revision: Option<u32>,
@@ -1049,7 +1057,11 @@ impl AppState {
         if partner_binagotchy_seed.is_none() {
             mascot::archive_startup_mascot(mascot_seed)?;
         }
-        let is_returning_user = config.mcp_slug.is_some() && config.ngrok_domain.is_some();
+        // Self-hosted by default. A tunnel is opt-in: it needs an explicit
+        // tunnelEnabled = true in config.toml, not just a leftover token.
+        let tunnel_requested = config.tunnel_enabled;
+        let is_returning_user = config.mcp_slug.is_some()
+            && (config.ngrok_domain.is_some() || !tunnel_requested);
         let stored_connector_revision = config.chatgpt_connector_revision;
         let chatgpt_connector_refresh_required = is_returning_user
             && stored_connector_revision.unwrap_or(0) < CURRENT_CHATGPT_CONNECTOR_REVISION;
@@ -1071,6 +1083,7 @@ impl AppState {
             ui_language: config.ui_language,
             mcp_slug,
             ngrok_domain: config.ngrok_domain.clone(),
+            tunnel_requested: tunnel_requested,
             is_returning_user,
             chatgpt_connector_refresh_required,
             chatgpt_connector_revision,
@@ -1123,9 +1136,19 @@ impl AppState {
     }
 
     pub fn public_mcp_url(&self) -> Option<String> {
-        self.ngrok_url
-            .as_ref()
-            .map(|url| format!("{url}{}", self.mcp_path()))
+        if let Some(url) = self.ngrok_url.as_ref() {
+            return Some(format!("{url}{}", self.mcp_path()));
+        }
+        // Self-hosted: give the local URL so it is obvious what a reverse proxy
+        // should point at, instead of showing "--" and leaving people guessing.
+        if self.server_running {
+            return Some(format!(
+                "http://127.0.0.1:{}{}",
+                self.port,
+                self.mcp_path()
+            ));
+        }
+        None
     }
 
     pub fn log(&mut self, level: &'static str, message: String) {

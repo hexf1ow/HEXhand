@@ -11,9 +11,22 @@ pub async fn start(state: SharedState) -> Result<(), String> {
         }
         (app.port, app.mcp_path())
     };
-    let authtoken = load_ngrok_authtoken()
-        .map_err(|e| format!("Failed to read ~/.catdesk/config.toml: {e}"))?
-        .ok_or_else(|| "ngrok authtoken is not configured".to_string())?;
+    let authtoken = match load_ngrok_authtoken()
+        .map_err(|e| format!("Failed to read the HEXhand config: {e}"))?
+    {
+        Some(token) => token,
+        // Self-hosted mode: no tunnel account, nothing to start. The MCP server
+        // is already listening on its local port for Caddy to reverse-proxy.
+        None => {
+            let mut app = state.lock().await;
+            app.log(
+                "INFO",
+                "Self-hosted mode: no tunnel started (point Caddy or a reverse proxy at this port)"
+                    .into(),
+            );
+            return Ok(());
+        }
+    };
     let forwards_to: Url = format!("http://127.0.0.1:{port}")
         .parse()
         .map_err(|e| format!("Invalid forward URL: {e}"))?;

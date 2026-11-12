@@ -2721,6 +2721,11 @@ async fn run_ngrok_auth_setup(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     state: SharedState,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    // HEXhand runs self-hosted by default: no tunnel account is required.
+    // The gate only appears if the user asks for a tunnel in Settings.
+    if !state.lock().await.tunnel_requested {
+        return Ok(true);
+    }
     if load_ngrok_authtoken()?.is_some() {
         return Ok(true);
     }
@@ -2910,6 +2915,9 @@ async fn run_ngrok_domain_setup(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     state: SharedState,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    if !state.lock().await.tunnel_requested {
+        return Ok(true);
+    }
     if load_ngrok_domain()?.is_some() {
         return Ok(true);
     }

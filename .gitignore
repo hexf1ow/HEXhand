@@ -7,3 +7,5 @@ log_old.txt
 config.toml
 .env
 connector_token.txt
+__pycache__/
+*.pyc

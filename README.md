@@ -30,6 +30,21 @@ commands and check the output — on your disk, with your toolchain, in your fol
 HEXhand is a rebranded distribution of [CatDesk](https://github.com/Xeift/CatDesk) (MIT).
 See [NOTICE](NOTICE) for attribution and the exact list of changes.
 
+## What it costs: nothing
+
+There is no subscription, no seat count, no usage meter and no account with us.
+
+| Piece | Cost |
+|---|---|
+| HEXhand itself | Free — MIT licence, source in this repo |
+| Prebuilt binaries | Free — Linux, macOS (Intel + Apple Silicon), Windows |
+| Caddy (HTTPS in front of it) | Free — open source |
+| DuckDNS (name for a changing home IP) | Free |
+| ChatGPT connector | Uses the plan you already pay for |
+
+The only thing you provide is the machine it runs on — a spare PC, a NAS or a small VPS.
+That is the whole cost of ownership.
+
 ## What you need
 
 | | |
@@ -124,8 +139,14 @@ Working-folder rules are enforced: any path outside the folder HEXhand was start
 
 ## Remote mode
 
-Run HEXhand on a server and let it drive a folder on another machine — useful for a build box, a
-Windows desktop, or a lab machine you don't want to install on.
+Run HEXhand on a server and let it drive a folder on another machine — a build box, a Windows
+desktop, a lab machine you don't want to install on.
+
+| Where the folder lives | How it works |
+|---|---|
+| Same machine as HEXhand | Run the binary in the folder. Nothing else needed. |
+| Another Windows machine | `hexhand-here.ps1` connector (included) |
+| Another Linux / macOS machine | Run the binary there, or use the connector script — see [connectors](connector/) |
 
 **On the machine that holds the files**, start the connector inside that folder:
 
@@ -146,6 +167,80 @@ hexhand
 
 Every tool call is then forwarded to the connector, so the files ChatGPT edits live on the other
 machine. The variable names keep their original spelling so existing CatDesk connectors keep working.
+
+## Run it free on your own server
+
+The whole stack is free: HEXhand in Docker, Caddy for HTTPS, DuckDNS for a name when your home IP
+changes. Nothing here needs a paid service or an account with us.
+
+```
+Internet ──► DuckDNS name ──► Caddy (HTTPS) ──► HEXhand container ──► connector ──► your folder
+```
+
+**1. Get a name for your IP** — sign in at [duckdns.org](https://www.duckdns.org), create a
+subdomain, and keep it pointed at your connection with their updater container:
+
+```bash
+docker run -d --name duckdns --restart=unless-stopped \
+  -e SUBDOMAINS=yourname -e TOKEN=<duckdns-token> -e LOG_FILE=false \
+  linuxserver/duckdns
+```
+
+**2. Start HEXhand with limits** — the limits are what stop a runaway command from eating the machine:
+
+```bash
+docker build -t hexhand .
+docker run -d --name hexhand --restart=unless-stopped \
+  --memory 1g --memory-swap 1g --cpus 1.5 --pids-limit 512 \
+  -v "$HOME/.hexhand:/root/.hexhand" \
+  hexhand
+```
+
+**3. Put Caddy in front** so it gets a real certificate (`Caddyfile`):
+
+```
+yourname.duckdns.org {
+    reverse_proxy hexhand:3201
+}
+```
+
+Open ports **80/443** to Caddy only. The HEXhand port itself stays on the Docker network.
+
+**4. Add the URL in ChatGPT** — `https://yourname.duckdns.org/<slug>/mcp`.
+
+**Video walkthroughs of DuckDNS** (watch one, the rest is copy-paste):
+
+- Techno Tim — *Self-Host All Your Homelab Services with DuckDNS* — https://www.youtube.com/watch?v=bVmUV1G5wpI
+- Awesome Open Source — *DuckDNS for Routing Internet Traffic to your Home Lab* — https://www.youtube.com/watch?v=Dm5MyuUdq2s
+
+### Why run it in a container
+
+A container does not make an agent safe on its own — what makes it safe is the boundary you put
+around it:
+
+- **cgroup limits** (`--memory`, `--cpus`, `--pids-limit`) stop a runaway build or a fork bomb from
+  taking the host down; the kernel refuses the allocation instead of the machine swapping to death.
+- **restart policy** (`--restart=unless-stopped`) brings it back by itself after a crash or a reboot.
+- **folder guard** in the app and the connector — every path is checked, so it cannot wander outside
+  the one folder you pointed it at.
+- **no host filesystem** beyond the single volume you mount, and no privileged mode.
+
+That is the combination worth advertising: bounded CPU, bounded memory, bounded files, restarts by
+itself.
+
+## Connector icon (ChatGPT)
+
+ChatGPT shows the connector icon very small, so the artwork is supplied in the sizes it actually
+renders from — square, transparent, tightly cropped:
+
+| File | Size | Use |
+|---|---|---|
+| `assets/icons/hexhand-512.png` | 512×512 | connector icon (recommended upload) |
+| `assets/icons/hexhand-256.png` | 256×256 | stores that ask for smaller |
+| `assets/icons/hexhand-128.png` | 128×128 | minimum size |
+| `assets/icons/hexhand.ico` | 16–256 | Windows executable icon |
+
+In ChatGPT: *Settings → Connectors → your HEXhand connector → Edit → icon → upload* the 512px file.
 
 ## Configuration
 

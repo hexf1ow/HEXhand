@@ -22,7 +22,7 @@ jobs:
       - name: Verify tag, npm, and Cargo versions match
         run: |
           npm_version="$(node -p "require('./package.json').version")"
-          cargo_version="$(cargo +stable metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name == "catdesk") | .version')"
+          cargo_version="$(cargo +stable metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name == "hexhand") | .version')"
 
           test -n "${cargo_version}"
           test "${npm_version}" = "${cargo_version}"
@@ -37,22 +37,22 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-22.04
-            asset: catdesk-linux-x64
+            asset: hexhand-linux-x64
             target: x86_64-unknown-linux-musl
-            binary: target/x86_64-unknown-linux-musl/release/catdesk
+            binary: target/x86_64-unknown-linux-musl/release/hexhand
           - runner: ubuntu-22.04-arm
-            asset: catdesk-linux-arm64
+            asset: hexhand-linux-arm64
             target: aarch64-unknown-linux-musl
-            binary: target/aarch64-unknown-linux-musl/release/catdesk
+            binary: target/aarch64-unknown-linux-musl/release/hexhand
           - runner: macos-15-intel
-            asset: catdesk-darwin-x64
-            binary: target/release/catdesk
+            asset: hexhand-darwin-x64
+            binary: target/release/hexhand
           - runner: macos-15
-            asset: catdesk-darwin-arm64
-            binary: target/release/catdesk
+            asset: hexhand-darwin-arm64
+            binary: target/release/hexhand
           - runner: windows-2022
-            asset: catdesk-win32-x64.exe
-            binary: target/release/catdesk.exe
+            asset: hexhand-win32-x64.exe
+            binary: target/release/hexhand.exe
 
     steps:
       - uses: actions/checkout@v4
@@ -106,9 +106,9 @@ jobs:
       - name: Create checksums
         run: |
           mkdir -p release
-          find artifacts -type f -name 'catdesk-*' -exec cp {} release/ \;
+          find artifacts -type f -name 'hexhand-*' -exec cp {} release/ \;
           cd release
-          sha256sum catdesk-* > SHA256SUMS
+          sha256sum hexhand-* > SHA256SUMS
           ls -la
 
       - name: Create release
@@ -120,22 +120,3 @@ jobs:
             --title "${GITHUB_REF_NAME}" \
             --notes-file release-notes.md \
             --verify-tag
-
-  publish-npm:
-    name: Publish npm package
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
-          package-manager-cache: false
-
-      - run: npm publish

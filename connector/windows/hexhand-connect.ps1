@@ -48,7 +48,7 @@ function Clear-Jobs {
             else { continue }
         }
         if (($now - $finished).TotalSeconds -ge $script:JobTtlSeconds) {
-            foreach ($f in @($job.Out, $job.Err)) {
+            foreach ($f in @($job.Out, $job.Err, $job.Wrap)) {
                 if ($f -and (Test-Path $f)) { try { Remove-Item $f -Force } catch {} }
             }
             $script:Jobs.Remove($id)
@@ -82,6 +82,7 @@ function Invoke-RunCommand($ToolInput) {
     $cmd = [string]$ToolInput.command
     $cwd = if ($ToolInput.cwd) { In-Workspace ([string]$ToolInput.cwd) } else { $Workspace }
     $timeout = if ($ToolInput.timeout) { [int]$ToolInput.timeout } else { 60000 }
+    if ($timeout -gt 180000) { $timeout = 180000 }
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = "cmd.exe"
     $psi.Arguments = "/c $cmd"
@@ -110,15 +111,21 @@ function Invoke-StartCommand($ToolInput) {
     $cwd = if ($ToolInput.cwd) { In-Workspace ([string]$ToolInput.cwd) } else { $Workspace }
     Clear-Jobs
     if ($script:Jobs.Count -ge $script:MaxJobs) {
-        return Text-Result ("too many commands are still tracked (" + [string]$script:Jobs.Count + ") - finished jobs clear automatically after " + [string]$script:JobTtlSeconds + " seconds, so poll or cancel an older job first") $true
+        return Text-Result ("too many commands are still tracked (" + [string]$script:Jobs.Count + ") - finished jobs clear automatically after " + [string]$script:JobTtlSeconds + " seconds, so poll or cancel an older job first") $false
     }
     $script:JobSeq++
     $id = "job-" + $script:JobSeq
     $outFile = Join-Path $env:TEMP ("catdesk-" + $id + ".out")
     $errFile = Join-Path $env:TEMP ("catdesk-" + $id + ".err")
-    $p = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -WorkingDirectory $cwd `
+    # Start-Process with redirected streams never exposes ExitCode, so the child reports
+    # its own code on a marker line that poll strips out. Without this every finished
+    # command looked like a failure and the client showed "Something went wrong".
+    $wrapFile = Join-Path $env:TEMP ("catdesk-" + $id + ".cmd")
+    $wrap = "@echo off`r`n" + $cmd + "`r`necho __HEXHAND_EXIT__=%ERRORLEVEL%"
+    [System.IO.File]::WriteAllText($wrapFile, $wrap)
+    $p = Start-Process -FilePath "cmd.exe" -ArgumentList ("/c " + [char]34 + $wrapFile + [char]34) -WorkingDirectory $cwd `
          -RedirectStandardOutput $outFile -RedirectStandardError $errFile -PassThru -WindowStyle Hidden
-    $script:Jobs[$id] = @{ Process = $p; Out = $outFile; Err = $errFile; Start = (Get-Date); FinishedAt = $null }
+    $script:Jobs[$id] = @{ Process = $p; Out = $outFile; Err = $errFile; Wrap = $wrapFile; Start = (Get-Date); FinishedAt = $null }
     return Text-Result ("started " + $id + " pid=" + $p.Id)
 }
 
@@ -126,18 +133,31 @@ function Invoke-PollCommand($ToolInput) {
     Clear-Jobs
     $id = [string]$ToolInput.job_id
     $job = $script:Jobs[$id]
-    if (-not $job) { return Text-Result ("job " + $id + " has finished and was cleared - do not poll it again") $true }
+    if (-not $job) { return Text-Result ("job " + $id + " has finished and was cleared - do not poll it again") $false }
     $running = -not $job.Process.HasExited
     if (-not $running -and -not $job.FinishedAt) { $job.FinishedAt = Get-Date }
+    # Start-Process -PassThru does not expose ExitCode until the object is refreshed, so the
+    # old code compared $null against 0 and reported EVERY finished command as a failure.
+    # That is what the client showed as "Something went wrong. Try again".
+    $code = $null
     $rawOut = if (Test-Path $job.Out) { Get-Content $job.Out -Raw } else { "" }
+    if (-not $running -and $rawOut) {
+        $m = [regex]::Match($rawOut, "__HEXHAND_EXIT__=(-?\d+)")
+        if ($m.Success) {
+            $code = [int]$m.Groups[1].Value
+            $rawOut = $rawOut.Substring(0, $m.Index).TrimEnd()
+        }
+    }
     $rawErr = if (Test-Path $job.Err) { Get-Content $job.Err -Raw } else { "" }
     $out = Get-Trimmed $rawOut
     $err = Get-Trimmed $rawErr
-    $state = if ($running) { "running" } else { "done exit=" + $job.Process.ExitCode }
+    if ($running) { $state = "running" }
+    elseif ($null -ne $code) { $state = "done exit=" + $code }
+    else { $state = "done" }
     $text = "[" + $state + "]`n" + $out
     if ($err) { $text = $text + "`nSTDERR:`n" + $err }
     if (-not $running) { $text = $text + "`n(this command has finished and the output above is complete - do not poll it again)" }
-    return Text-Result $text (-not $running -and $job.Process.ExitCode -ne 0)
+    return Text-Result $text ((-not $running) -and ($null -ne $code) -and ($code -ne 0))
 }
 
 function Invoke-CancelCommand($ToolInput) {
@@ -194,24 +214,44 @@ function Invoke-Edit($ToolInput) {
 }
 
 function Invoke-Search($ToolInput) {
-    $root = if ($ToolInput.path) { In-Workspace ([string]$ToolInput.path) } else { $Workspace }
-    $max = if ($ToolInput.max_matches) { [int]$ToolInput.max_matches } else { 100 }
     $pattern = [string]$ToolInput.pattern
-    $gci = @{ Path = $root; Recurse = $true; File = $true }
-    if ($ToolInput.glob) { $gci.Filter = [string]$ToolInput.glob }
-    $files = Get-ChildItem @gci -ErrorAction SilentlyContinue
-    $hits = @()
-    foreach ($f in $files) {
-        if ($hits.Count -ge $max) { break }
-        $matches = Select-String -Path $f.FullName -Pattern $pattern -SimpleMatch:([bool]$ToolInput.fixed_strings) `
-                   -CaseSensitive:(-not $ToolInput.case_insensitive) -ErrorAction SilentlyContinue
-        foreach ($m in $matches) {
-            $hits += ("" + $f.FullName + ":" + $m.LineNumber + ": " + $m.Line.Trim())
-            if ($hits.Count -ge $max) { break }
+    $root = if ($ToolInput.path) { In-Workspace ([string]$ToolInput.path) } else { $Workspace }
+    $glob = $ToolInput.glob
+    $max = if ($ToolInput.max_matches) { [int]$ToolInput.max_matches } else { 200 }
+    if ($max -gt 500) { $max = 500 }
+    $skip = @('\node_modules\', '\.git\', '\target\', '\.venv\', '\AppData\', '\$Recycle.Bin\', '\OneDrive\')
+    $matches = New-Object System.Collections.ArrayList
+    $deadline = (Get-Date).AddSeconds(20)
+    $truncated = $false
+    $walker = $null
+    try {
+        $walker = [System.IO.Directory]::EnumerateFiles($root, '*', [System.IO.SearchOption]::AllDirectories).GetEnumerator()
+    } catch { $walker = $null }
+    if ($walker) {
+        while ($true) {
+            try { if (-not $walker.MoveNext()) { break } } catch { break }
+            if ($matches.Count -ge $max -or (Get-Date) -gt $deadline) { $truncated = $true; break }
+            $full = [string]$walker.Current
+            $skipping = $false
+            foreach ($s in $skip) { if ($full.IndexOf($s, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) { $skipping = $true; break } }
+            if ($skipping) { continue }
+            if ($glob -and ([System.IO.Path]::GetFileName($full) -notlike $glob)) { continue }
+            try { if ((New-Object System.IO.FileInfo $full).Length -gt 2MB) { continue } } catch { continue }
+            $lineNo = 0
+            try {
+                foreach ($line in [System.IO.File]::ReadLines($full)) {
+                    $lineNo++
+                    if ($line -like ("*" + $pattern + "*")) {
+                        [void]$matches.Add(($full + ":" + $lineNo + ": " + $line.Trim()))
+                        if ($matches.Count -ge $max) { $truncated = $true; break }
+                    }
+                }
+            } catch { }
         }
     }
-    if ($hits.Count -eq 0) { return Text-Result "no matches" }
-    return Text-Result ($hits -join "`n")
+    $text = if ($matches.Count -eq 0) { "no matches for " + $pattern } else { ($matches -join "`n") }
+    if ($truncated) { $text = $text + "`n(search stopped early - narrow it with path, glob or max_matches)" }
+    return Text-Result $text $false
 }
 
 function Invoke-Delete($ToolInput) {

@@ -132,7 +132,17 @@ function Invoke-StartCommand($ToolInput) {
 function Invoke-PollCommand($ToolInput) {
     Clear-Jobs
     $id = [string]$ToolInput.job_id
+    # ChatGPT sends wait_ms and expects the server to hold the request. Ignoring it meant the
+    # model got "running" back instantly and polled again straight away - 1,076 polls in the
+    # log for a handful of commands. Honour it, capped so one call cannot pin the listener.
+    $waitMs = if ($ToolInput.wait_ms) { [int]$ToolInput.wait_ms } else { 10000 }
+    if ($waitMs -lt 0) { $waitMs = 0 }
+    if ($waitMs -gt 30000) { $waitMs = 30000 }
     $job = $script:Jobs[$id]
+    if ($job -and $waitMs -gt 0 -and -not $job.Process.HasExited) {
+        $until = (Get-Date).AddMilliseconds($waitMs)
+        while ((Get-Date) -lt $until -and -not $job.Process.HasExited) { Start-Sleep -Milliseconds 250 }
+    }
     if (-not $job) { return Text-Result ("job " + $id + " has finished and was cleared - do not poll it again") $false }
     $running = -not $job.Process.HasExited
     if (-not $running -and -not $job.FinishedAt) { $job.FinishedAt = Get-Date }

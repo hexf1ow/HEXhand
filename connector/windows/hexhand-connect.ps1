@@ -31,6 +31,38 @@ if (-not $Token) {
 $script:Jobs = @{}
 $script:JobSeq = 0
 
+# A chat that ran several commands used to leave every job - plus its Process object and
+# temp files - in memory for the life of the connector, so the client kept a live poll
+# target for each one. Finished jobs now clear after a short grace; the pool is capped.
+$script:JobTtlSeconds = 120
+$script:MaxJobs = 16
+$script:MaxOutputChars = 65536
+
+function Clear-Jobs {
+    $now = Get-Date
+    foreach ($id in @($script:Jobs.Keys)) {
+        $job = $script:Jobs[$id]
+        $finished = $job.FinishedAt
+        if (-not $finished) {
+            if ($job.Process -and $job.Process.HasExited) { $finished = $now; $job.FinishedAt = $now }
+            else { continue }
+        }
+        if (($now - $finished).TotalSeconds -ge $script:JobTtlSeconds) {
+            foreach ($f in @($job.Out, $job.Err)) {
+                if ($f -and (Test-Path $f)) { try { Remove-Item $f -Force } catch {} }
+            }
+            $script:Jobs.Remove($id)
+        }
+    }
+}
+
+function Get-Trimmed([string]$Text) {
+    if (-not $Text) { return "" }
+    if ($Text.Length -le $script:MaxOutputChars) { return $Text }
+    $tail = $Text.Substring($Text.Length - $script:MaxOutputChars)
+    return ("...(output truncated, showing the last " + $script:MaxOutputChars + " chars)" + [Environment]::NewLine + $tail)
+}
+
 function In-Workspace([string]$Path) {
     if (-not $Path) { return $Workspace }
     $full = if ([System.IO.Path]::IsPathRooted($Path)) { [System.IO.Path]::GetFullPath($Path) }
@@ -76,26 +108,35 @@ function Invoke-RunCommand($ToolInput) {
 function Invoke-StartCommand($ToolInput) {
     $cmd = [string]$ToolInput.command
     $cwd = if ($ToolInput.cwd) { In-Workspace ([string]$ToolInput.cwd) } else { $Workspace }
+    Clear-Jobs
+    if ($script:Jobs.Count -ge $script:MaxJobs) {
+        return Text-Result ("too many commands are still tracked (" + [string]$script:Jobs.Count + ") - finished jobs clear automatically after " + [string]$script:JobTtlSeconds + " seconds, so poll or cancel an older job first") $true
+    }
     $script:JobSeq++
     $id = "job-" + $script:JobSeq
     $outFile = Join-Path $env:TEMP ("catdesk-" + $id + ".out")
     $errFile = Join-Path $env:TEMP ("catdesk-" + $id + ".err")
     $p = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmd" -WorkingDirectory $cwd `
          -RedirectStandardOutput $outFile -RedirectStandardError $errFile -PassThru -WindowStyle Hidden
-    $script:Jobs[$id] = @{ Process = $p; Out = $outFile; Err = $errFile; Start = Get-Date }
+    $script:Jobs[$id] = @{ Process = $p; Out = $outFile; Err = $errFile; Start = (Get-Date); FinishedAt = $null }
     return Text-Result ("started " + $id + " pid=" + $p.Id)
 }
 
 function Invoke-PollCommand($ToolInput) {
+    Clear-Jobs
     $id = [string]$ToolInput.job_id
     $job = $script:Jobs[$id]
-    if (-not $job) { return Text-Result ("unknown job " + $id) $true }
+    if (-not $job) { return Text-Result ("job " + $id + " has finished and was cleared - do not poll it again") $true }
     $running = -not $job.Process.HasExited
-    $out = if (Test-Path $job.Out) { Get-Content $job.Out -Raw } else { "" }
-    $err = if (Test-Path $job.Err) { Get-Content $job.Err -Raw } else { "" }
+    if (-not $running -and -not $job.FinishedAt) { $job.FinishedAt = Get-Date }
+    $rawOut = if (Test-Path $job.Out) { Get-Content $job.Out -Raw } else { "" }
+    $rawErr = if (Test-Path $job.Err) { Get-Content $job.Err -Raw } else { "" }
+    $out = Get-Trimmed $rawOut
+    $err = Get-Trimmed $rawErr
     $state = if ($running) { "running" } else { "done exit=" + $job.Process.ExitCode }
     $text = "[" + $state + "]`n" + $out
     if ($err) { $text = $text + "`nSTDERR:`n" + $err }
+    if (-not $running) { $text = $text + "`n(this command has finished and the output above is complete - do not poll it again)" }
     return Text-Result $text (-not $running -and $job.Process.ExitCode -ne 0)
 }
 
@@ -104,6 +145,7 @@ function Invoke-CancelCommand($ToolInput) {
     $job = $script:Jobs[$id]
     if (-not $job) { return Text-Result ("unknown job " + $id) $true }
     if (-not $job.Process.HasExited) { try { $job.Process.Kill($true) } catch {} }
+    $job.FinishedAt = Get-Date
     return Text-Result ("cancelled " + $id)
 }
 
@@ -248,7 +290,9 @@ while ($listener.IsListening) {
             $reader = New-Object System.IO.StreamReader($req.InputStream)
             $raw = $reader.ReadToEnd()
             $payload = $raw | ConvertFrom-Json
-            Add-Content -Path "C:\Users\Superuser\.hexhand\connector\catdesk-debug.log" -Value ("METHOD=" + $payload.method + " NAME=" + $payload.params.name + " ARGKEYS=" + (($payload.params.arguments | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -join ",") + " RAW=" + $raw.Substring(0, [Math]::Min(200, $raw.Length)))
+            $dbg = "C:\Users\Superuser\.hexhand\connector\catdesk-debug.log"
+            if ((Test-Path $dbg) -and ((Get-Item $dbg).Length -gt 5MB)) { try { Remove-Item $dbg -Force } catch {} }
+            Add-Content -Path $dbg -Value ("METHOD=" + $payload.method + " NAME=" + $payload.params.name + " ARGKEYS=" + (($payload.params.arguments | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name) -join ",") + " RAW=" + $raw.Substring(0, [Math]::Min(200, $raw.Length)))
             $resp = @{ jsonrpc = "2.0"; id = $payload.id }
             switch ($payload.method) {
                 "tools/list" {

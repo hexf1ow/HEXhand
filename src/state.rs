@@ -71,7 +71,11 @@ const APP_CONFIG_FILE_NAME: &str = "config.toml";
 pub const GPT_5_6_AND_EARLIER_USAGE_BUCKET: &str = "through-gpt-5.6";
 pub const CURRENT_USAGE_BUCKET: &str = GPT_5_6_AND_EARLIER_USAGE_BUCKET;
 /// Bump only when an existing ChatGPT connector must be removed and added again.
-pub const CURRENT_CHATGPT_CONNECTOR_REVISION: u32 = 3;
+// Bumped when the tool list a client has cached should be re-read. Revision 4 carries
+// the poll_command contract change: ChatGPT must stop polling a finished job instead of
+// keeping dozens of live calls open, and a connector added before the rename still shows
+// the retired "catdesk_instruction" label until the client re-reads the tool list.
+pub const CURRENT_CHATGPT_CONNECTOR_REVISION: u32 = 4;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

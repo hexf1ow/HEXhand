@@ -2457,7 +2457,7 @@ Always specify the branch explicitly when using `git push`."#
                 .to_string(),
         );
         lines.push(
-            "Use poll_command to read incremental output from a background command. Pass the returned nextCursor as after on the next poll so output is not repeated. If hasMoreOutput is true, keep polling even after the command reaches a terminal state so all buffered output can be drained."
+            "Use poll_command to read incremental output from a background command. Pass the returned nextCursor as after on the next poll so output is not repeated. Keep polling ONLY while hasMoreOutput is true; once the state is terminal and hasMoreOutput is false, all output has been delivered — stop polling that job, do not call poll_command again for it, and report the result to the user."
                 .to_string(),
         );
         lines.push(

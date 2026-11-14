@@ -1699,6 +1699,16 @@ fn copy_dir_recursive(from: &std::path::Path, to: &std::path::Path) -> std::io::
     Ok(())
 }
 
+
+/// A container has no keyboard. When HEXHAND_HEADLESS=1 the app must reach a serving
+/// state on its own: no intro, no mode menu, and no modal waiting for a keypress —
+/// otherwise a restart leaves the connector answering 502.
+fn headless_mode() -> bool {
+    std::env::var("HEXHAND_HEADLESS")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // rustls 0.23 refuses to pick a process-level CryptoProvider when more than
@@ -2085,8 +2095,10 @@ async fn run_app(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     state: SharedState,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Draw mode selection screen
-    loop {
+    let headless = headless_mode();
+
+    // Draw mode selection screen — skipped headless, where the persisted mode is used.
+    while !headless {
         let (current_theme, current_tool_mode, current_ui_language) = {
             let app = state.lock().await;
             (app.current_theme(), app.tool_mode, app.ui_language)
@@ -2129,14 +2141,18 @@ async fn run_app(
         }
     }
 
-    if mode_is_browser_enabled(state.clone()).await {
+    if !headless && mode_is_browser_enabled(state.clone()).await {
         let continue_run = run_browser_select(terminal, state.clone()).await?;
         if !continue_run {
             return Ok(());
         }
     }
 
-    let continue_run = run_ngrok_auth_setup(terminal, state.clone()).await?;
+    let continue_run = if headless {
+        true
+    } else {
+        run_ngrok_auth_setup(terminal, state.clone()).await?
+    };
     if !continue_run {
         return Ok(());
     }
@@ -2152,7 +2168,9 @@ async fn run_app(
     let (ui_event_tx, mut ui_event_rx) = unbounded_channel();
     let devtools_bridge = start_services(state.clone(), ui_event_tx).await;
 
-    run_chatgpt_connector_refresh_notice(terminal, state.clone(), &mut ui_event_rx).await?;
+    if !headless_mode() {
+        run_chatgpt_connector_refresh_notice(terminal, state.clone(), &mut ui_event_rx).await?;
+    }
 
     // Phase 2: main TUI loop
     run_tui(terminal, state, devtools_bridge, ui_event_rx).await

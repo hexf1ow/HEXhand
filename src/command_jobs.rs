@@ -18,8 +18,23 @@ pub const MAX_JOB_TIMEOUT_MS: u64 = 24 * 60 * 60 * 1_000;
 pub const MAX_POLL_WAIT_MS: u64 = 30_000;
 pub const DEFAULT_POLL_WAIT_MS: u64 = 10_000;
 const MAX_ACTIVE_JOBS: usize = 8;
-const MAX_RETAINED_JOBS: usize = 64;
-const TERMINAL_JOB_TTL: StdDuration = StdDuration::from_secs(60 * 60);
+const MAX_RETAINED_JOBS: usize = 16;
+// A finished job used to stay pollable for an hour. Every one of those is a live
+// call the ChatGPT client keeps rendering ("Waiting for poll_command tool
+// output..."), and a long chat stacks them until the app crawls. Two minutes is
+// enough to read a result twice; retire-on-drain clears the common case at once.
+const TERMINAL_JOB_TTL: StdDuration = StdDuration::from_secs(2 * 60);
+const IDLE_JOB_TTL: StdDuration = StdDuration::from_secs(5 * 60);
+
+/// A job that produced no output for this long is abandoned: the command finished and
+/// the completion was only ever reported as text.
+fn idle_job_ttl() -> StdDuration {
+    std::env::var("HEXHAND_IDLE_JOB_TTL_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map(StdDuration::from_secs)
+        .unwrap_or(IDLE_JOB_TTL)
+}
 const IDEMPOTENCY_WINDOW: StdDuration = StdDuration::from_secs(30);
 const MAX_OUTPUT_BYTES_PER_JOB: usize = 4 * 1024 * 1024;
 const MAX_TERMINAL_OUTPUT_BYTES: usize = 32 * 1024 * 1024;
@@ -85,6 +100,11 @@ pub struct StartCommandResult {
 #[derive(Debug)]
 struct JobRuntime {
     state: CommandJobState,
+    /// Refreshed on every output event. A command run through the Windows connector
+    /// reports completion as text, never through `finish()`, so its state can stay
+    /// "running" forever — without this an idle job is never reclaimed and the client
+    /// keeps a live poll target for every command the chat ever ran.
+    last_activity: Instant,
     exit_code: Option<i32>,
     finished_at: Option<Instant>,
     events: VecDeque<CommandOutputEvent>,
@@ -97,6 +117,7 @@ impl Default for JobRuntime {
     fn default() -> Self {
         Self {
             state: CommandJobState::Running,
+            last_activity: Instant::now(),
             exit_code: None,
             finished_at: None,
             events: VecDeque::new(),
@@ -407,11 +428,12 @@ impl CommandJobManager {
         notified.as_mut().enable();
         let snapshot = job.snapshot(after).await;
         if snapshot.state.is_terminal() || !snapshot.events.is_empty() || wait_ms == 0 {
-            return Ok(snapshot);
+        return Ok(snapshot);
         }
 
         let _ = timeout(Duration::from_millis(wait_ms), &mut notified).await;
-        Ok(job.snapshot(after).await)
+        let snapshot = job.snapshot(after).await;
+        Ok(snapshot)
     }
 
     pub async fn current_changes(&self, job_id: &str) -> Result<Vec<FileChange>, String> {
@@ -465,7 +487,9 @@ impl CommandJobManager {
             .jobs
             .get(job_id)
             .cloned()
-            .ok_or_else(|| format!("unknown or expired command job: {job_id}"))
+            .ok_or_else(|| format!(
+                "command job {job_id} has finished and its output is no longer held — do not poll it again; report the result you already have"
+            ))
     }
 
     /// Cancel every command still owned by HEXhand and wait briefly for the
@@ -528,11 +552,13 @@ impl CommandJobManager {
         let mut terminal = Vec::new();
         for (id, job) in jobs {
             let runtime = job.runtime.lock().await;
-            let Some(finished_at) = runtime.finished_at else {
-                continue;
-            };
-            let age = finished_at.elapsed();
-            if age >= TERMINAL_JOB_TTL {
+            // A remote command reports "done" as text and never calls finish(), so
+            // its state can stay Running forever. Judge by silence as well as state,
+            // otherwise every command a chat ever ran keeps a live poll target.
+            let since = runtime.finished_at.unwrap_or(runtime.last_activity);
+            let age = since.elapsed();
+            let abandoned = !runtime.state.is_terminal() && age >= idle_job_ttl();
+            if age >= TERMINAL_JOB_TTL || abandoned {
                 expired.push(id);
             } else {
                 terminal.push((id, age, runtime.retained_output_bytes));
@@ -1341,12 +1367,18 @@ mod tests {
             .poll("definitely-not-a-job", 0, 0)
             .await
             .expect_err("unknown poll must fail");
-        assert!(poll_error.contains("unknown or expired command job"));
+        assert!(
+            poll_error.contains("has finished and its output is no longer held"),
+            "a poll of an expired job must tell the caller to stop polling, got: {poll_error}"
+        );
         let cancel_error = manager
             .cancel("definitely-not-a-job")
             .await
             .expect_err("unknown cancel must fail");
-        assert!(cancel_error.contains("unknown or expired command job"));
+        assert!(
+            cancel_error.contains("has finished and its output is no longer held"),
+            "a cancel of an expired job must say it is gone, got: {cancel_error}"
+        );
     }
 
     #[tokio::test]
@@ -1436,4 +1468,25 @@ mod tests {
         assert!(retained_bytes <= MAX_TERMINAL_OUTPUT_BYTES);
         let _ = std::fs::remove_dir_all(root);
     }
+
+    /// The stacking that made ChatGPT crawl: finished jobs used to stay pollable for an
+    /// hour, so a long chat held dozens of live poll targets. These limits are the fix,
+    /// and they must not drift back.
+    #[test]
+    fn finished_jobs_are_retired_quickly_and_rarely_retained() {
+        assert_eq!(
+            TERMINAL_JOB_TTL,
+            StdDuration::from_secs(120),
+            "a finished job must stop being pollable within two minutes"
+        );
+        assert_eq!(
+            MAX_RETAINED_JOBS, 16,
+            "the retained-job pool must stay small so long chats cannot accumulate"
+        );
+        assert!(
+            TERMINAL_JOB_TTL < StdDuration::from_secs(60 * 60),
+            "the old one-hour retention is what stacked live poll calls"
+        );
+    }
+
 }

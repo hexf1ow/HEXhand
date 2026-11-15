@@ -1403,6 +1403,14 @@ async fn handle_tools_call_with_show_detail_mode(
         }
     }
 
+    // A tool result must carry readable content. The instruction result is built with the
+    // text in structuredContent only, so the client had nothing to show and the tool panel
+    // sat on "Opening Get usage instructions" until it timed out. Mirror the text into a
+    // proper content item when the list is empty.
+    if let Some(result) = response.result.as_mut() {
+        ensure_text_content(result);
+    }
+
     response
 }
 
@@ -2706,6 +2714,35 @@ fn attach_widget_payload_meta(result: &mut Value, payload: Value) {
         return;
     };
     meta_obj.insert(WIDGET_PAYLOAD_META_KEY.to_string(), payload);
+}
+
+fn ensure_text_content(result: &mut Value) {
+    let has_content = result
+        .get("content")
+        .and_then(Value::as_array)
+        .is_some_and(|items| !items.is_empty());
+    if has_content {
+        return;
+    }
+    let text = {
+        let structured = result.get("structuredContent");
+        structured
+            .and_then(|structured| structured.get("instructionText"))
+            .and_then(Value::as_str)
+            .or_else(|| {
+                structured
+                    .and_then(|structured| structured.get("message"))
+                    .and_then(Value::as_str)
+            })
+            .map(str::to_string)
+    };
+    let Some(text) = text else { return; };
+    if let Some(object) = result.as_object_mut() {
+        object.insert(
+            "content".to_string(),
+            json!([{ "type": "text", "text": text }]),
+        );
+    }
 }
 
 fn widget_payload_meta_mut(result: &mut Value) -> Option<&mut Map<String, Value>> {

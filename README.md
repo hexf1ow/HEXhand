@@ -285,6 +285,36 @@ supported too — see `deploy/Dockerfile` and `deploy/entrypoint.sh`.
 - HEXhand serves one folder: the one it was started in. Paths outside it are rejected.
 - The tunnel is outbound from your machine; you never open a port on your router.
 
+## Troubleshooting the ChatGPT app
+
+If the app shows **"Couldn't open Get usage instructions"** or **"Get usage instructions timed out"**, the
+connector never finished registering — almost always one of these:
+
+- **The server refused `initialize`.** The app opens a session before listing tools and gives up when it
+  is refused, which leaves every tool panel timing out. HEXhand answers `initialize` from 0.11.14; on
+  anything older, upgrade the server.
+- **A stale plugin record.** Remove the plugin, quit the app fully (not just close to tray), then add the
+  MCP server again with `https://<your-host>/agent/<slug>/mcp`.
+- **Wrong URL.** It must end in `/mcp`. A missing `/mcp` returns 404 for every call.
+- **Authentication.** HEXhand has no auth of its own: choose **No authentication**, and tick
+  *I understand and want to continue* on the risk screen.
+
+Check the server side first — a healthy connector answers this in under a second:
+
+```bash
+curl -s -X POST https://<your-host>/agent/<slug>/mcp \
+  -H 'Content-Type: application/json' -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: initialize' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{}}}'
+```
+
+A `200` with `serverInfo` means the server is fine and the problem is the stored plugin in the app.
+
+## Working folder
+
+The connector starts with Windows and stays connected, so nothing needs activating. It serves the folder
+it was last started in and remembers it between reboots; right-click a folder and choose **HexHand Here**
+to switch. Paths outside that folder are rejected.
+
 ## Licence and attribution
 
 MIT — see [LICENSE](LICENSE).

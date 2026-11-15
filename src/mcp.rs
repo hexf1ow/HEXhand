@@ -999,7 +999,11 @@ async fn handle_tools_list_with_show_detail_mode(
             }));
         }
 
-        tools.push(hexhand_instruction_tool_descriptor());
+        // With the detail panel off the client cannot render the instruction tool's panel and
+        // reports "Get usage instructions timed out" every turn, so do not offer the tool.
+        if widget_enabled() {
+            tools.push(hexhand_instruction_tool_descriptor());
+        }
         tools.push(json!({
             "name": "read",
             "title": "Read files",
@@ -2681,12 +2685,32 @@ fn sanitize_result_for_turn_token_count(result: &Value) -> Value {
     sanitized
 }
 
+/// Set when the user turns the detail panel off. Clients that cannot open the widget then
+/// show "Get usage instructions timed out" on every turn even though the tool itself
+/// succeeded, so the template must not be advertised at all in that mode.
+static WIDGET_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+pub fn set_widget_enabled(enabled: bool) {
+    WIDGET_ENABLED.store(enabled, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn widget_enabled() -> bool {
+    WIDGET_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 fn ensure_output_template_meta(meta_value: &mut Value) {
     let resource_uri = current_widget_resource_uri();
     ensure_output_template_meta_with_uri(meta_value, &resource_uri);
 }
 
 fn ensure_output_template_meta_with_uri(meta_value: &mut Value, resource_uri: &str) {
+    if !widget_enabled() {
+        if let Some(object) = meta_value.as_object_mut() {
+            object.remove("openai/outputTemplate");
+            object.remove("ui");
+        }
+        return;
+    }
     if !meta_value.is_object() {
         *meta_value = json!({});
     }

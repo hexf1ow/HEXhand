@@ -21,6 +21,8 @@ use std::sync::{
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::{Mutex, mpsc::UnboundedSender};
+use tokio_stream::{StreamExt as _, wrappers::IntervalStream};
+use std::time::Duration;
 
 use crate::command_jobs::CommandJobManager;
 use crate::devtools::DevtoolsBridge;
@@ -4421,12 +4423,19 @@ async fn post_mcp_inner(
 // ── GET /<slug>/mcp — pure HTTP mode (no SSE) ───────────────
 
 async fn get_mcp() -> Response<Body> {
+    // Some MCP clients - the ChatGPT desktop app among them - open a Server-Sent Events
+    // stream with GET and treat a refusal as the connector being unavailable, so every tool
+    // call in that chat then times out. All requests are still answered inline on POST, so
+    // the stream only has to exist and stay open.
+    let stream = IntervalStream::new(tokio::time::interval(Duration::from_secs(15))).map(|_| {
+        Ok::<Bytes, std::convert::Infallible>(Bytes::from_static(b": keep-alive\n\n"))
+    });
     Response::builder()
-        .status(StatusCode::METHOD_NOT_ALLOWED)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            r#"{"jsonrpc":"2.0","error":{"code":-32601,"message":"GET SSE stream is disabled in pure HTTP mode"}}"#,
-        ))
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/event-stream")
+        .header(header::CACHE_CONTROL, "no-cache")
+        .header(header::CONNECTION, "keep-alive")
+        .body(Body::from_stream(stream))
         .unwrap()
 }
 

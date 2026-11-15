@@ -1760,6 +1760,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let mut app = state.lock().await;
         app.persist_state_with_log();
+        // Whether the MCP layer may advertise the detail widget at all.
+        mcp::set_widget_enabled(app.show_detail_mode != ShowDetailMode::Disable);
     }
 
     enable_raw_mode()?;
@@ -1997,6 +1999,10 @@ async fn ensure_background_router(mcp_slug: &str) -> std::io::Result<()> {
 async fn run_background_router() -> Result<(), Box<dyn std::error::Error>> {
     let workspace_root = std::env::current_dir()?.to_string_lossy().into_owned();
     let app = AppState::new(workspace_router::ROUTER_PORT, workspace_root)?;
+    // Tell the MCP layer whether it may advertise the detail widget. With the panel switched
+    // off the client still tried to open the template and reported
+    // "Get usage instructions timed out" even though the tool itself had succeeded.
+    mcp::set_widget_enabled(app.show_detail_mode != ShowDetailMode::Disable);
     let state: SharedState = Arc::new(Mutex::new(app));
     {
         let mut app = state.lock().await;

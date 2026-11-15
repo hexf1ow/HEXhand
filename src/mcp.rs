@@ -219,6 +219,17 @@ pub(crate) async fn handle_request_with_show_detail_mode(
             show_detail_mode,
         )),
         "ping" => Some(JsonRpcResponse::success(req.id.clone(), json!({}))),
+        // Some clients (the ChatGPT desktop app among them) still open a session with
+        // initialize and give up when it is refused, which made plugin creation hang and
+        // left the connector half-registered. Answering it is harmless in a stateless server.
+        "initialize" => Some(JsonRpcResponse::success(
+            req.id.clone(),
+            json!({
+                "protocolVersion": "2026-07-28",
+                "capabilities": server_capabilities(show_detail_mode),
+                "serverInfo": { "name": "hexhand", "version": env!("CARGO_PKG_VERSION") }
+            }),
+        )),
         _ => Some(JsonRpcResponse::error(
             req.id.clone(),
             -32601,

@@ -1197,8 +1197,17 @@ async fn handle_tools_call_with_show_detail_mode(
     show_detail_mode: ShowDetailMode,
 ) -> JsonRpcResponse {
     // Remote workspace (Level 2): the folder lives on the connector's machine.
-    // Every tool call executes there, not inside this container.
-    if crate::remote::remote_endpoint().is_some() {
+    // Every tool call executes there, not inside this container - except the instruction
+    // text, which is static. Forwarding it meant it queued behind a long poll_command on
+    // the connector's single request loop, and ChatGPT gave up with "Get usage instructions
+    // timed out", leaving the tool panel unopened.
+    let forwarded_locally = req.method == "tools/call"
+        && req
+            .params
+            .get("name")
+            .and_then(Value::as_str)
+            .is_some_and(|name| matches!(name, "hexhand_instruction" | "catdesk_instruction"));
+    if !forwarded_locally && crate::remote::remote_endpoint().is_some() {
         if let Some(forwarded) =
             crate::remote::forward(&req.method, req.id.clone(), &req.params).await
         {

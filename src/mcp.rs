@@ -2552,7 +2552,16 @@ fn hexhand_instruction_widget_payload_with_cards(
         "binagotchyPathDisplay".to_string(),
         json!(binagotchy_path_display),
     );
-    payload_obj.insert("binagotchyCards".to_string(), json!(binagotchy_cards));
+    // The mascot card set is 171 KB of the 182 KB payload. The client renders the widget
+    // from the template and does not need the whole card library, and shipping it made the
+    // panel sit on "Opening Get usage instructions" until ChatGPT timed out. Send a small
+    // sample instead - the widget falls back to its built-in art for anything missing.
+    let cards_payload = if binagotchy_cards.len() > 3 {
+        binagotchy_cards[..3].to_vec()
+    } else {
+        binagotchy_cards.clone()
+    };
+    payload_obj.insert("binagotchyCards".to_string(), json!(cards_payload));
     payload_obj.insert(
         "widgetMascot".to_string(),
         json!(mascot::build_widget_mascot(mascot_seed)),
